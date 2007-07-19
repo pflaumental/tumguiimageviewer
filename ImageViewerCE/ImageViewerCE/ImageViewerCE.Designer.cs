@@ -64,7 +64,6 @@ namespace ImageViewerCE {
             this.Menu = this.mainMenu;
             this.Name = "ImageViewerCEForm";
             this.Text = "ImageViewerCE";
-            this.Paint += new System.Windows.Forms.PaintEventHandler(this.ImageViewerCEForm_Paint);
             this.ResumeLayout(false);
 
         }
