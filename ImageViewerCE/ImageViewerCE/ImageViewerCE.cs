@@ -6,10 +6,14 @@ using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
 using System.IO;
+using System.Threading;
 
 
 namespace ImageViewerCE {
     public partial class ImageViewerCEForm : Form {
+        volatile bool workingThreadRunning;
+        volatile bool killWorkingThread;
+
         Size previewAreaSize;
         Rectangle previewAreaOnThumbnailsImageRectangle;
         Rectangle previewAreaOnScreenRectangle;
@@ -17,6 +21,7 @@ namespace ImageViewerCE {
         Size singleThumbnailImageSize;
         Rectangle singleThumbnailImageRectangle;
         Size singleThumbnailWithSpacingSize;
+        Rectangle targetOnThumbnailsImageRectangle;
 
         int thumbnailSpacing;
 
@@ -37,9 +42,16 @@ namespace ImageViewerCE {
         Color backgroundColor;
 
         public string standardDirectory = "\\";
+
+        int lastValidX;
+        int firstVisibleY;
+        int lastVisibleY;
         
         public ImageViewerCEForm() {
             InitializeComponent();
+
+            workingThreadRunning = false;
+            killWorkingThread = false;
 
             previewAreaSize = new Size(ClientSize.Width, ClientSize.Height);
             previewAreaOnThumbnailsImageRectangle = new Rectangle(0, 0, previewAreaSize.Width, previewAreaSize.Height);
@@ -100,9 +112,23 @@ namespace ImageViewerCE {
 
         private void treeView_AfterSelect(object sender, TreeViewEventArgs e) {
             ChangeDirectory(treeView.SelectedNode.Tag.ToString());
+
+            // Vorsicht: instabiler Synchronizations HACK !!! (lock Statement reicht hier
+            // nicht und ich hab keine Ahnung wie die "höherwertigen" Konstrukte bei C#
+            // heißen)
+            killWorkingThread = true;
+            Thread.Sleep(0);
+            if (workingThreadRunning) {                
+                for(int i=0; i<1000; i++) {
+                    Thread.Sleep(0);
+                    if (!workingThreadRunning)
+                        break;
+                }
+            }
+            killWorkingThread = false;
+
             thumbnailsImageFromCurrentFolder();
         }
-
 
         private void thumbnailsImageFromCurrentFolder() {
             List<string> imageFilenames = new List<string>();
@@ -124,12 +150,26 @@ namespace ImageViewerCE {
             thumbnailsImage = new Bitmap(ClientSize.Width, singleThumbnailWithSpacingSize.Height * thumbnailsLineCount + 1);
             thumbnailsImageG = Graphics.FromImage(thumbnailsImage);
             thumbnailsImageG.FillRectangle(backgroundBrush, new Rectangle(0, 0, thumbnailsImage.Width, thumbnailsImage.Height));
-            Rectangle targetOnThumbnailsImageRectangle = new Rectangle(thumbnailSpacing, thumbnailSpacing, singleThumbnailImageSize.Width, singleThumbnailImageSize.Height);
+            targetOnThumbnailsImageRectangle = new Rectangle(thumbnailSpacing, thumbnailSpacing, singleThumbnailImageSize.Width, singleThumbnailImageSize.Height);
 
-            int lastValidX = thumbnailsImage.Width - singleThumbnailWithSpacingSize.Width;
-            int firstVisibleY = previewAreaOnThumbnailsImageRectangle.Y - singleThumbnailImageSize.Height + 1;
-            int lastVisibleY = previewAreaOnThumbnailsImageRectangle.Y + previewAreaOnThumbnailsImageRectangle.Height - 1;
+            lastValidX = thumbnailsImage.Width - singleThumbnailWithSpacingSize.Width;
+            firstVisibleY = previewAreaOnThumbnailsImageRectangle.Y - singleThumbnailImageSize.Height + 1;
+            lastVisibleY = previewAreaOnThumbnailsImageRectangle.Y + previewAreaOnThumbnailsImageRectangle.Height - 1;
+
+            WaitCallback w = new WaitCallback(fillThumbnailsImageFromFolder_Callback);
+            ThreadPool.QueueUserWorkItem(w, imageFilenames);
+        }
+
+        private void fillThumbnailsImageFromFolder_Callback(object val) {
+            workingThreadRunning = true;
+
+            List<string> imageFilenames = (List<string>)val;
             foreach (string imageFilename in imageFilenames) {
+                if (killWorkingThread) {
+                    workingThreadRunning = false;
+                    return;
+                }                
+
                 Bitmap singleThumbnailImage = null;
                 Bitmap loadedImage = null;
                 string thumbnailTempPath = tempDirectory
@@ -162,12 +202,18 @@ namespace ImageViewerCE {
                     singleThumbnailImage.Save(thumbnailTempPath, System.Drawing.Imaging.ImageFormat.Bmp);
                 }
 
-                thumbnailsImageG.DrawImage(singleThumbnailImage, targetOnThumbnailsImageRectangle, singleThumbnailImageRectangle, GraphicsUnit.Pixel);
+                if (killWorkingThread) {
+                    workingThreadRunning = false;
+                    return;
+                }     
+                this.Invoke(new WaitCallback(DrawOnThumbnailsImage), singleThumbnailImage);
+                
+                //thumbnailsImageG.DrawImage(singleThumbnailImage, targetOnThumbnailsImageRectangle, singleThumbnailImageRectangle, GraphicsUnit.Pixel);
                 singleThumbnailImage.Dispose();
 
-                if (targetOnThumbnailsImageRectangle.Y > firstVisibleY 
+                if (targetOnThumbnailsImageRectangle.Y > firstVisibleY
                         && targetOnThumbnailsImageRectangle.Y < lastVisibleY)
-                    Draw();
+                    this.Invoke(new EventHandler((Draw_Event)));
 
                 targetOnThumbnailsImageRectangle.X += singleThumbnailWithSpacingSize.Width;
                 if (targetOnThumbnailsImageRectangle.X > lastValidX) {
@@ -176,7 +222,19 @@ namespace ImageViewerCE {
                 }
                 
             }
-            Draw();
+            if (killWorkingThread) {
+                workingThreadRunning = false;
+                return;
+            }   
+            this.Invoke(new EventHandler((Draw_Event)));
+
+            workingThreadRunning = false;
+
+        }
+
+        public void DrawOnThumbnailsImage(object val) {
+            Bitmap singleThumbnailImage = (Bitmap) val;
+            thumbnailsImageG.DrawImage(singleThumbnailImage, targetOnThumbnailsImageRectangle, singleThumbnailImageRectangle, GraphicsUnit.Pixel);
         }
 
         protected override void OnPaint(PaintEventArgs e) {
@@ -184,6 +242,10 @@ namespace ImageViewerCE {
         }
 
         public override void Refresh() {
+            Draw();
+        }
+
+        public void Draw_Event(object sender, EventArgs e) {
             Draw();
         }
 
@@ -199,13 +261,6 @@ namespace ImageViewerCE {
         }
 
         private void menuBrowser_Click(object sender, EventArgs e) {
-            //if (treeView.Visible) {
-            //    previewAreaSize.Height = ClientSize.Height;
-            //}
-            //else {
-            //    previewAreaSize.Height = ClientSize.Height - treeView.Height;
-            //}
-
             treeView.Visible = !treeView.Visible;
         }
       
