@@ -14,6 +14,8 @@ namespace ImageViewerCE {
         volatile bool workingThreadRunning;
         volatile bool killWorkingThread;
 
+        List<string> imageFilenames;
+
         Size previewAreaSize;
         Rectangle previewAreaOnThumbnailsImageRectangle;
         Rectangle previewAreaOnScreenRectangle;
@@ -24,6 +26,7 @@ namespace ImageViewerCE {
         Rectangle targetOnThumbnailsImageRectangle;
 
         int thumbnailSpacing;
+        int stopperHeight;
 
         int thumbnailsPerLine;
 
@@ -39,26 +42,59 @@ namespace ImageViewerCE {
         string tempDirectory;
 
         Brush backgroundBrush;
+        SolidBrush stopperBrush;        
         Color backgroundColor;
+        Color foregroundColor;
+        Color[] stopperColors;
+        int stopperColorsCnt;
 
         public string standardDirectory = "\\";
 
         int lastValidX;
         int firstVisibleY;
         int lastVisibleY;
+
+        // Scrolling/Clicking Stuff:
+        int mouseDragStartY;
+        int lastMouseX;
+        int lastMouseY;
+        int mouseWayLength;
+        int oldMouseWayLength;
+        int oldPreviewAreaOnThumbnailsImageY;
+        bool isMouseDown;
+        bool scrollStyleIsGoogle;
+        readonly int middleAreaStartY;
+        readonly int middleAreaEndY;
         
         public ImageViewerCEForm() {
-            InitializeComponent();
+            InitializeComponent();           
 
             workingThreadRunning = false;
             killWorkingThread = false;
 
-            previewAreaSize = new Size(ClientSize.Width, ClientSize.Height);
-            previewAreaOnThumbnailsImageRectangle = new Rectangle(0, 0, previewAreaSize.Width, previewAreaSize.Height);
-            previewAreaOnScreenRectangle = new Rectangle(0, 0, previewAreaSize.Width, previewAreaSize.Height);
+            imageFilenames = null;
 
             backgroundColor = Color.Black;
+            foregroundColor = Color.White;
             backgroundBrush = new SolidBrush(backgroundColor);
+            stopperBrush = new SolidBrush(foregroundColor);
+
+            stopperHeight = 50;
+            stopperColorsCnt = 50;
+            stopperColors = new Color[stopperColorsCnt];
+            for (int i = 0; i < stopperColorsCnt; i++) {
+                stopperColors[i] = Color.FromArgb((byte)(foregroundColor.R * (((float)stopperColorsCnt - i) / stopperColorsCnt)
+                        + backgroundColor.R * ((float)i / stopperColorsCnt)),
+                        (byte)(foregroundColor.G * (((float)stopperColorsCnt - i) / stopperColorsCnt)
+                        + backgroundColor.G * ((float)i / stopperColorsCnt)),
+                        (byte)(foregroundColor.B * (((float)stopperColorsCnt - i) / stopperColorsCnt)
+                        + backgroundColor.B * ((float)i / stopperColorsCnt)));
+            }
+
+            previewAreaSize = new Size(ClientSize.Width, ClientSize.Height);
+            previewAreaOnThumbnailsImageRectangle = new Rectangle(0, stopperHeight, previewAreaSize.Width, previewAreaSize.Height);
+            previewAreaOnScreenRectangle = new Rectangle(0, 0, previewAreaSize.Width, previewAreaSize.Height);
+
             screenG = this.CreateGraphics();
 
             thumbnailsPerLine = 4;
@@ -76,8 +112,20 @@ namespace ImageViewerCE {
             if (!System.IO.Directory.Exists(tempDirectory))
                 System.IO.Directory.CreateDirectory(tempDirectory);
 
+            // Scrolling/Clicking Stuff
+            middleAreaStartY = (int)(0.15f * previewAreaSize.Height);
+            middleAreaEndY = (int)(0.85f * previewAreaSize.Height);
+            scrollStyleIsGoogle = true;
+            isMouseDown = false;
+            mouseDragStartY = -1;
+            lastMouseX = -1;
+            lastMouseY = -1;
+            oldPreviewAreaOnThumbnailsImageY = 0;
+            mouseWayLength = 0;
+            oldMouseWayLength = 0;
+
             screenG.Clear(backgroundColor);
-            DrawTreeView(standardDirectory);
+            DrawTreeView(standardDirectory);            
         }
 
         private void ChangeDirectory(string newDirectory) {
@@ -131,7 +179,7 @@ namespace ImageViewerCE {
         }
 
         private void thumbnailsImageFromCurrentFolder() {
-            List<string> imageFilenames = new List<string>();
+            imageFilenames = new List<string>();
             imageFilenames.AddRange(System.IO.Directory.GetFiles(currentDirectory, "*.jpg"));
             imageFilenames.AddRange(System.IO.Directory.GetFiles(currentDirectory, "*.jpeg"));
             imageFilenames.AddRange(System.IO.Directory.GetFiles(currentDirectory, "*.tiff"));
@@ -146,11 +194,13 @@ namespace ImageViewerCE {
                 return;
             }
 
+            imageFilenames.Sort();
+
             thumbnailsLineCount = (int)Math.Ceiling((double)imageFilenames.Count / thumbnailsPerLine);
-            thumbnailsImage = new Bitmap(ClientSize.Width, singleThumbnailWithSpacingSize.Height * thumbnailsLineCount + 1);
+            thumbnailsImage = new Bitmap(ClientSize.Width, singleThumbnailWithSpacingSize.Height * thumbnailsLineCount + 2 * stopperHeight);
             thumbnailsImageG = Graphics.FromImage(thumbnailsImage);
-            thumbnailsImageG.FillRectangle(backgroundBrush, new Rectangle(0, 0, thumbnailsImage.Width, thumbnailsImage.Height));
-            targetOnThumbnailsImageRectangle = new Rectangle(thumbnailSpacing, thumbnailSpacing, singleThumbnailImageSize.Width, singleThumbnailImageSize.Height);
+            drawBackground();            
+            targetOnThumbnailsImageRectangle = new Rectangle(thumbnailSpacing, thumbnailSpacing + stopperHeight, singleThumbnailImageSize.Width, singleThumbnailImageSize.Height);
 
             lastValidX = thumbnailsImage.Width - singleThumbnailWithSpacingSize.Width;
             firstVisibleY = previewAreaOnThumbnailsImageRectangle.Y - singleThumbnailImageSize.Height + 1;
@@ -158,6 +208,20 @@ namespace ImageViewerCE {
 
             WaitCallback w = new WaitCallback(fillThumbnailsImageFromFolder_Callback);
             ThreadPool.QueueUserWorkItem(w, imageFilenames);
+        }
+
+        private void drawBackground() {
+            thumbnailsImageG.FillRectangle(backgroundBrush, new Rectangle(0, stopperHeight, thumbnailsImage.Width, thumbnailsImage.Height - stopperHeight));
+            int stopperLineHeight = stopperHeight / stopperColorsCnt;
+            Rectangle upperStopperLineRect = new Rectangle(0, 0, thumbnailsImage.Width, stopperLineHeight);
+            Rectangle lowerStopperLineRect = new Rectangle(0, thumbnailsImage.Height - stopperLineHeight, thumbnailsImage.Width, stopperLineHeight);
+            for (int i = 0; i < stopperColorsCnt; i++) {
+                stopperBrush.Color = stopperColors[i];
+                thumbnailsImageG.FillRectangle(stopperBrush, upperStopperLineRect);
+                thumbnailsImageG.FillRectangle(stopperBrush, lowerStopperLineRect);
+                upperStopperLineRect.Y += stopperLineHeight;
+                lowerStopperLineRect.Y -= stopperLineHeight;
+            }
         }
 
         private void fillThumbnailsImageFromFolder_Callback(object val) {
@@ -232,9 +296,14 @@ namespace ImageViewerCE {
 
         }
 
-        public void DrawOnThumbnailsImage(object val) {
+        private void DrawOnThumbnailsImage(object val) {
             Bitmap singleThumbnailImage = (Bitmap) val;
             thumbnailsImageG.DrawImage(singleThumbnailImage, targetOnThumbnailsImageRectangle, singleThumbnailImageRectangle, GraphicsUnit.Pixel);
+        }
+
+        private void ThumbnailClicked(int imageIndex) {
+            // TODO
+            MessageBox.Show(imageFilenames[imageIndex] + " was clicked.");
         }
 
         protected override void OnPaint(PaintEventArgs e) {
@@ -259,10 +328,104 @@ namespace ImageViewerCE {
             screenG.DrawImage(thumbnailsImage, previewAreaOnScreenRectangle, previewAreaOnThumbnailsImageRectangle, GraphicsUnit.Pixel);
             this.Update();
         }
-
-        private void menuBrowser_Click(object sender, EventArgs e) {
-            treeView.Visible = !treeView.Visible;
+       
+        private void toolBar_ButtonClick(object sender, ToolBarButtonClickEventArgs e) {
+            if (e.Button == browserButton) {
+                treeView.Visible = !treeView.Visible;
+                e.Button.Pushed = !e.Button.Pushed;
+            }
         }
-      
+
+        private void ImageViewerCEForm_MouseDown(object sender, MouseEventArgs e) {
+            isMouseDown = true;
+            mouseDragStartY = e.Y;
+            oldPreviewAreaOnThumbnailsImageY = previewAreaOnThumbnailsImageRectangle.Y;
+            mouseWayLength = 0;
+            oldMouseWayLength = 0;
+
+            lastMouseX = e.X;
+            lastMouseY = e.Y;
+        }
+
+        private void ImageViewerCEForm_MouseUp(object sender, MouseEventArgs e) {
+            int mouseX = lastMouseX;
+            int mouseY = lastMouseY;
+
+            lastMouseX = -1;
+            lastMouseY = -1;
+
+            if (mouseWayLength > 3)
+                return; // no klick
+
+            // klick
+
+            mouseDragStartY = -1;
+            isMouseDown = false;
+
+            int thumbnailsImageMouseY = mouseY + oldPreviewAreaOnThumbnailsImageY;
+            int selectedImageColumnIndex = mouseX / singleThumbnailWithSpacingSize.Width;
+            if(selectedImageColumnIndex >= thumbnailsPerLine)
+                return;
+            int selectedImageLineIndex = (thumbnailsImageMouseY - stopperHeight) / singleThumbnailWithSpacingSize.Height;
+            if (selectedImageLineIndex < 0 || selectedImageLineIndex >= thumbnailsLineCount)
+                return;
+            int selectedImageIndex = selectedImageLineIndex * thumbnailsPerLine + selectedImageColumnIndex;
+            if (selectedImageIndex >= imageFilenames.Count)
+                return;
+
+            ThumbnailClicked(selectedImageIndex);
+
+        }
+
+        private void ImageViewerCEForm_MouseMove(object sender, MouseEventArgs e) {
+            // Do nothing if mouse wasn't pressed down before
+            if (!isMouseDown)
+                return;
+
+            // Calculate mouseWayLength
+            mouseWayLength += Math.Abs(e.X - lastMouseX);
+            mouseWayLength += Math.Abs(e.Y - lastMouseY);
+
+            // Move previewAreaOnThumbnailsImageRectangle
+            int newY;
+            if (e.Y < middleAreaStartY) { // Upper area
+                // Calculate new previewAreaOnThumbnailsImageY
+                int speed = mouseWayLength - oldMouseWayLength;
+                if (scrollStyleIsGoogle)
+                    newY = previewAreaOnThumbnailsImageRectangle.Y + speed; // Google-Maps-Style
+                else
+                    newY = previewAreaOnThumbnailsImageRectangle.Y - speed; // Inverse-Style
+                mouseDragStartY = e.Y;
+                oldPreviewAreaOnThumbnailsImageY = previewAreaOnThumbnailsImageRectangle.Y;
+            } else if (e.Y < middleAreaEndY) { // Middle area
+                // Calculate new previewAreaOnThumbnailsImageY
+                int moveY;
+                if (scrollStyleIsGoogle)
+                    moveY = mouseDragStartY - e.Y; // Google-Maps-Style
+                else
+                    moveY = e.Y - mouseDragStartY; // Inverse-Style
+                newY = oldPreviewAreaOnThumbnailsImageY + moveY;
+            } else { // Bottom area
+                // Calculate new previewAreaOnThumbnailsImageY
+                int speed = mouseWayLength - oldMouseWayLength;
+                if (scrollStyleIsGoogle)
+                    newY = previewAreaOnThumbnailsImageRectangle.Y - speed; // Google-Maps-Style
+                else
+                    newY = previewAreaOnThumbnailsImageRectangle.Y + speed; // Inverse-Style
+                mouseDragStartY = e.Y;
+                oldPreviewAreaOnThumbnailsImageY = previewAreaOnThumbnailsImageRectangle.Y;
+            }
+            // Clamp new drawSectionY
+            newY = Math.Min(
+            newY, thumbnailsImage.Height - previewAreaSize.Height);
+            previewAreaOnThumbnailsImageRectangle.Y = Math.Max(
+                        newY, 0);
+
+            lastMouseX = e.X;
+            lastMouseY = e.Y;
+            oldMouseWayLength = mouseWayLength;
+
+            Draw();
+        }
     }
 }

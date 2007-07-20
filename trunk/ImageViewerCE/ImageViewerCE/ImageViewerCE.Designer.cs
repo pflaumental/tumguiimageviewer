@@ -4,7 +4,6 @@ namespace ImageViewerCE {
         /// Required designer variable.
         /// </summary>
         private System.ComponentModel.IContainer components = null;
-        private System.Windows.Forms.MainMenu mainMenu;
 
         /// <summary>
         /// Clean up any resources being used.
@@ -25,34 +24,38 @@ namespace ImageViewerCE {
         /// </summary>
         private void InitializeComponent() {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ImageViewerCEForm));
-            this.mainMenu = new System.Windows.Forms.MainMenu();
-            this.menuBrowser = new System.Windows.Forms.MenuItem();
             this.treeView = new System.Windows.Forms.TreeView();
-            this.imageList = new System.Windows.Forms.ImageList();
+            this.menuAndBrowserIcons = new System.Windows.Forms.ImageList();
+            this.toolBar = new System.Windows.Forms.ToolBar();
+            this.browserButton = new System.Windows.Forms.ToolBarButton();
             this.SuspendLayout();
-            // 
-            // mainMenu
-            // 
-            this.mainMenu.MenuItems.Add(this.menuBrowser);
-            // 
-            // menuBrowser
-            // 
-            this.menuBrowser.Text = "Browser";
-            this.menuBrowser.Click += new System.EventHandler(this.menuBrowser_Click);
             // 
             // treeView
             // 
             this.treeView.ImageIndex = 0;
-            this.treeView.ImageList = this.imageList;
+            this.treeView.ImageList = this.menuAndBrowserIcons;
             this.treeView.Location = new System.Drawing.Point(3, 164);
             this.treeView.Name = "treeView";
             this.treeView.SelectedImageIndex = 0;
             this.treeView.Size = new System.Drawing.Size(234, 100);
             this.treeView.TabIndex = 0;
             this.treeView.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.treeView_AfterSelect);
-            this.imageList.Images.Clear();
-            this.imageList.Images.Add(((System.Drawing.Image)(resources.GetObject("resource"))));
-            this.imageList.Images.Add(((System.Drawing.Image)(resources.GetObject("resource1"))));
+            this.menuAndBrowserIcons.Images.Clear();
+            this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource"))));
+            this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource1"))));
+            // 
+            // toolBar
+            // 
+            this.toolBar.Buttons.Add(this.browserButton);
+            this.toolBar.ImageList = this.menuAndBrowserIcons;
+            this.toolBar.Name = "toolBar";
+            this.toolBar.ButtonClick += new System.Windows.Forms.ToolBarButtonClickEventHandler(this.toolBar_ButtonClick);
+            // 
+            // browserButton
+            // 
+            this.browserButton.ImageIndex = 0;
+            this.browserButton.Pushed = true;
+            this.browserButton.ToolTipText = "Show Browser";
             // 
             // ImageViewerCEForm
             // 
@@ -60,10 +63,13 @@ namespace ImageViewerCE {
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.AutoScroll = true;
             this.ClientSize = new System.Drawing.Size(240, 268);
+            this.Controls.Add(this.toolBar);
             this.Controls.Add(this.treeView);
-            this.Menu = this.mainMenu;
             this.Name = "ImageViewerCEForm";
             this.Text = "ImageViewerCE";
+            this.MouseUp += new System.Windows.Forms.MouseEventHandler(this.ImageViewerCEForm_MouseUp);
+            this.MouseMove += new System.Windows.Forms.MouseEventHandler(this.ImageViewerCEForm_MouseMove);
+            this.MouseDown += new System.Windows.Forms.MouseEventHandler(this.ImageViewerCEForm_MouseDown);
             this.ResumeLayout(false);
 
         }
@@ -71,8 +77,9 @@ namespace ImageViewerCE {
         #endregion
 
         private System.Windows.Forms.TreeView treeView;
-        private System.Windows.Forms.ImageList imageList;
-        private System.Windows.Forms.MenuItem menuBrowser;
+        private System.Windows.Forms.ImageList menuAndBrowserIcons;
+        private System.Windows.Forms.ToolBar toolBar;
+        private System.Windows.Forms.ToolBarButton browserButton;
 
     }
 }
