@@ -26,8 +26,10 @@ namespace ImageViewerCE {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ImageViewerCEForm));
             this.treeView = new System.Windows.Forms.TreeView();
             this.menuAndBrowserIcons = new System.Windows.Forms.ImageList();
-            this.toolBar = new System.Windows.Forms.ToolBar();
+            this.thumbnailsToolBar = new System.Windows.Forms.ToolBar();
             this.browserButton = new System.Windows.Forms.ToolBarButton();
+            this.fullscreenToolBar = new System.Windows.Forms.ToolBar();
+            this.thumbnailsButton = new System.Windows.Forms.ToolBarButton();
             this.SuspendLayout();
             // 
             // treeView
@@ -43,13 +45,14 @@ namespace ImageViewerCE {
             this.menuAndBrowserIcons.Images.Clear();
             this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource"))));
             this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource1"))));
+            this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource2"))));
             // 
-            // toolBar
+            // thumbnailToolBar
             // 
-            this.toolBar.Buttons.Add(this.browserButton);
-            this.toolBar.ImageList = this.menuAndBrowserIcons;
-            this.toolBar.Name = "toolBar";
-            this.toolBar.ButtonClick += new System.Windows.Forms.ToolBarButtonClickEventHandler(this.toolBar_ButtonClick);
+            this.thumbnailsToolBar.Buttons.Add(this.browserButton);
+            this.thumbnailsToolBar.ImageList = this.menuAndBrowserIcons;
+            this.thumbnailsToolBar.Name = "thumbnailToolBar";
+            this.thumbnailsToolBar.ButtonClick += new System.Windows.Forms.ToolBarButtonClickEventHandler(this.thumbnailsToolBar_ButtonClick);
             // 
             // browserButton
             // 
@@ -57,18 +60,31 @@ namespace ImageViewerCE {
             this.browserButton.Pushed = true;
             this.browserButton.ToolTipText = "Show Browser";
             // 
+            // fullscreenToolBar
+            // 
+            this.fullscreenToolBar.Buttons.Add(this.thumbnailsButton);
+            this.fullscreenToolBar.ImageList = this.menuAndBrowserIcons;
+            this.fullscreenToolBar.Name = "fullscreenToolBar";
+            this.fullscreenToolBar.ButtonClick += new System.Windows.Forms.ToolBarButtonClickEventHandler(this.fullscreenToolBar_ButtonClick);
+            // 
+            // thumbnailsButton
+            // 
+            this.thumbnailsButton.ImageIndex = 2;
+            // 
             // ImageViewerCEForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.AutoScroll = true;
             this.ClientSize = new System.Drawing.Size(240, 268);
-            this.Controls.Add(this.toolBar);
+            this.Controls.Add(this.thumbnailsToolBar);
             this.Controls.Add(this.treeView);
+            this.KeyPreview = true;
             this.Name = "ImageViewerCEForm";
             this.Text = "ImageViewerCE";
             this.MouseUp += new System.Windows.Forms.MouseEventHandler(this.ImageViewerCEForm_MouseUp);
             this.MouseMove += new System.Windows.Forms.MouseEventHandler(this.ImageViewerCEForm_MouseMove);
+            this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.ImageViewerCEForm_KeyDown);
             this.MouseDown += new System.Windows.Forms.MouseEventHandler(this.ImageViewerCEForm_MouseDown);
             this.ResumeLayout(false);
 
@@ -78,8 +94,10 @@ namespace ImageViewerCE {
 
         private System.Windows.Forms.TreeView treeView;
         private System.Windows.Forms.ImageList menuAndBrowserIcons;
-        private System.Windows.Forms.ToolBar toolBar;
+        private System.Windows.Forms.ToolBar thumbnailsToolBar;
         private System.Windows.Forms.ToolBarButton browserButton;
+        private System.Windows.Forms.ToolBar fullscreenToolBar;
+        private System.Windows.Forms.ToolBarButton thumbnailsButton;
 
     }
 }
