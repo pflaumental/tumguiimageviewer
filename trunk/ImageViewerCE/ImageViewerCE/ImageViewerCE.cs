@@ -11,14 +11,20 @@ using System.Threading;
 
 namespace ImageViewerCE {
     public partial class ImageViewerCEForm : Form {
-        volatile bool workingThreadRunning;
-        volatile bool killWorkingThread;
+        volatile bool thumbnailWorkingThreadRunning;
+        volatile bool fullscreenWorkingThreadRunning;
+        volatile bool killThumbnailWorkingThread;
+        volatile bool killFullscreenWorkingThread;
+        volatile int currentFullscreenIndexOnBuffer;
+        volatile int currentFullscreenIndexOnFilenameList;
 
         List<string> imageFilenames;
+        bool isFullscreenMode;
 
-        Size previewAreaSize;
-        Rectangle previewAreaOnThumbnailsImageRectangle;
-        Rectangle previewAreaOnScreenRectangle;
+        Size viewAreaSize;
+        float viewAreaRatio;
+        Rectangle viewAreaOnThumbnailsImageRectangle;
+        Rectangle viewAreaOnScreenRectangle;
 
         Size singleThumbnailImageSize;
         Rectangle singleThumbnailImageRectangle;
@@ -65,12 +71,29 @@ namespace ImageViewerCE {
         bool scrollStyleIsGoogle;
         readonly int middleAreaStartY;
         readonly int middleAreaEndY;
+
+        int imageCountFullscreen; // Muss immer eine ungerade Zahl sein
+        int imageWidthFullscreen;
+        int imageHeightFullscreen;
+
+        Bitmap[] fullscreenImages;
         
         public ImageViewerCEForm() {
-            InitializeComponent();           
+            InitializeComponent();
+            killThumbnailWorkingThread = false;
+            killFullscreenWorkingThread = false;
+            imageCountFullscreen = 5;
+            isFullscreenMode = false;
+            currentFullscreenIndexOnBuffer = imageCountFullscreen / 2;
 
-            workingThreadRunning = false;
-            killWorkingThread = false;
+            fullscreenImages = new Bitmap[imageCountFullscreen];
+            currentFullscreenIndexOnFilenameList = 0;
+
+            this.imageWidthFullscreen = ClientSize.Width;
+            this.imageHeightFullscreen = ClientSize.Height;
+
+            thumbnailWorkingThreadRunning = false;
+            killThumbnailWorkingThread = false;
 
             imageFilenames = null;
 
@@ -91,9 +114,10 @@ namespace ImageViewerCE {
                         + backgroundColor.B * ((float)i / stopperColorsCnt)));
             }
 
-            previewAreaSize = new Size(ClientSize.Width, ClientSize.Height);
-            previewAreaOnThumbnailsImageRectangle = new Rectangle(0, stopperHeight, previewAreaSize.Width, previewAreaSize.Height);
-            previewAreaOnScreenRectangle = new Rectangle(0, 0, previewAreaSize.Width, previewAreaSize.Height);
+            viewAreaSize = new Size(ClientSize.Width, ClientSize.Height);
+            viewAreaRatio = ((float)viewAreaSize.Width) / viewAreaSize.Height;
+            viewAreaOnThumbnailsImageRectangle = new Rectangle(0, stopperHeight, viewAreaSize.Width, viewAreaSize.Height);
+            viewAreaOnScreenRectangle = new Rectangle(0, 0, viewAreaSize.Width, viewAreaSize.Height);
 
             screenG = this.CreateGraphics();
 
@@ -113,8 +137,8 @@ namespace ImageViewerCE {
                 System.IO.Directory.CreateDirectory(tempDirectory);
 
             // Scrolling/Clicking Stuff
-            middleAreaStartY = (int)(0.15f * previewAreaSize.Height);
-            middleAreaEndY = (int)(0.85f * previewAreaSize.Height);
+            middleAreaStartY = (int)(0.15f * viewAreaSize.Height);
+            middleAreaEndY = (int)(0.85f * viewAreaSize.Height);
             scrollStyleIsGoogle = true;
             isMouseDown = false;
             mouseDragStartY = -1;
@@ -164,16 +188,16 @@ namespace ImageViewerCE {
             // Vorsicht: instabiler Synchronizations HACK !!! (lock Statement reicht hier
             // nicht und ich hab keine Ahnung wie die "höherwertigen" Konstrukte bei C#
             // heißen)
-            killWorkingThread = true;
+            killThumbnailWorkingThread = true;
             Thread.Sleep(0);
-            if (workingThreadRunning) {                
+            if (thumbnailWorkingThreadRunning) {                
                 for(int i=0; i<1000; i++) {
                     Thread.Sleep(0);
-                    if (!workingThreadRunning)
+                    if (!thumbnailWorkingThreadRunning)
                         break;
                 }
             }
-            killWorkingThread = false;
+            killThumbnailWorkingThread = false;
 
             thumbnailsImageFromCurrentFolder();
         }
@@ -190,7 +214,7 @@ namespace ImageViewerCE {
             
             if (imageFilenames.Count <= 0) {
                 thumbnailsImage = null;
-                Draw();
+                DrawThumbnailView();
                 return;
             }
 
@@ -203,8 +227,8 @@ namespace ImageViewerCE {
             targetOnThumbnailsImageRectangle = new Rectangle(thumbnailSpacing, thumbnailSpacing + stopperHeight, singleThumbnailImageSize.Width, singleThumbnailImageSize.Height);
 
             lastValidX = thumbnailsImage.Width - singleThumbnailWithSpacingSize.Width;
-            firstVisibleY = previewAreaOnThumbnailsImageRectangle.Y - singleThumbnailImageSize.Height + 1;
-            lastVisibleY = previewAreaOnThumbnailsImageRectangle.Y + previewAreaOnThumbnailsImageRectangle.Height - 1;
+            firstVisibleY = viewAreaOnThumbnailsImageRectangle.Y - singleThumbnailImageSize.Height + 1;
+            lastVisibleY = viewAreaOnThumbnailsImageRectangle.Y + viewAreaOnThumbnailsImageRectangle.Height - 1;
 
             WaitCallback w = new WaitCallback(fillThumbnailsImageFromFolder_Callback);
             ThreadPool.QueueUserWorkItem(w, imageFilenames);
@@ -225,12 +249,12 @@ namespace ImageViewerCE {
         }
 
         private void fillThumbnailsImageFromFolder_Callback(object val) {
-            workingThreadRunning = true;
+            thumbnailWorkingThreadRunning = true;
 
             List<string> imageFilenames = (List<string>)val;
             foreach (string imageFilename in imageFilenames) {
-                if (killWorkingThread) {
-                    workingThreadRunning = false;
+                if (killThumbnailWorkingThread) {
+                    thumbnailWorkingThreadRunning = false;
                     return;
                 }                
 
@@ -266,8 +290,8 @@ namespace ImageViewerCE {
                     singleThumbnailImage.Save(thumbnailTempPath, System.Drawing.Imaging.ImageFormat.Bmp);
                 }
 
-                if (killWorkingThread) {
-                    workingThreadRunning = false;
+                if (killThumbnailWorkingThread) {
+                    thumbnailWorkingThreadRunning = false;
                     return;
                 }     
                 this.Invoke(new WaitCallback(DrawOnThumbnailsImage), singleThumbnailImage);
@@ -277,7 +301,7 @@ namespace ImageViewerCE {
 
                 if (targetOnThumbnailsImageRectangle.Y > firstVisibleY
                         && targetOnThumbnailsImageRectangle.Y < lastVisibleY)
-                    this.Invoke(new EventHandler((Draw_Event)));
+                    this.Invoke(new EventHandler((DrawThumbnails_Event)));
 
                 targetOnThumbnailsImageRectangle.X += singleThumbnailWithSpacingSize.Width;
                 if (targetOnThumbnailsImageRectangle.X > lastValidX) {
@@ -286,13 +310,13 @@ namespace ImageViewerCE {
                 }
                 
             }
-            if (killWorkingThread) {
-                workingThreadRunning = false;
+            if (killThumbnailWorkingThread) {
+                thumbnailWorkingThreadRunning = false;
                 return;
             }   
-            this.Invoke(new EventHandler((Draw_Event)));
+            this.Invoke(new EventHandler((DrawThumbnails_Event)));
 
-            workingThreadRunning = false;
+            thumbnailWorkingThreadRunning = false;
 
         }
 
@@ -302,8 +326,71 @@ namespace ImageViewerCE {
         }
 
         private void ThumbnailClicked(int imageIndex) {
-            // TODO
-            MessageBox.Show(imageFilenames[imageIndex] + " was clicked.");
+            treeView.Visible = false;
+            isFullscreenMode = true;
+            this.Controls.Remove(thumbnailsToolBar);
+            this.Controls.Add(fullscreenToolBar);
+
+            currentFullscreenIndexOnFilenameList = imageIndex;
+            
+            for(int i=0; i<fullscreenImages.Length; i++)
+                fullscreenImages[i] = null;
+
+            WaitCallback w = new WaitCallback(loadFullscreenImages);
+            ThreadPool.QueueUserWorkItem(w, imageIndex);
+        }
+        
+        private void loadFullscreenImages(object val) {
+            fullscreenWorkingThreadRunning = true;          
+            int imageIndex = (int)val;
+            
+            int fullscreenImagesMid = imageCountFullscreen / 2;
+            currentFullscreenIndexOnBuffer = fullscreenImagesMid;
+
+            int u=0;
+            int d=0;
+            int x = 0;
+            for (int i = 0; i < imageCountFullscreen; i++) {
+                if (killFullscreenWorkingThread) {
+                    thumbnailWorkingThreadRunning = false;
+                    return;
+                }                
+                if (i % 2 == 0)
+                    x = d--;
+                else
+                    x = ++u;
+                int srcIndex = imageIndex + x;
+                int destIndex = fullscreenImagesMid + x;
+                if (srcIndex < 0 || srcIndex >= imageFilenames.Count) {
+                    fullscreenImages[destIndex] = null;
+                    continue;
+                }
+                fullscreenImages[destIndex] = new Bitmap(imageFilenames[srcIndex]);
+                if (destIndex == currentFullscreenIndexOnBuffer) {
+                    if (killFullscreenWorkingThread) {
+                        fullscreenWorkingThreadRunning = false;
+                        return;
+                    }                
+                    this.Invoke(new EventHandler((DrawFullscreenView_Event)));
+                }
+            }
+            fullscreenWorkingThreadRunning = false;
+        }
+
+        private void loadSingleFullscreenImage(object val) {
+            int[] values = (int[])val;
+            int destImageIndex = values[0];
+            int sourceImageIndex = values[1];
+            if (sourceImageIndex < 0 || sourceImageIndex >= imageFilenames.Count) 
+                fullscreenImages[destImageIndex] = null;
+            else
+                fullscreenImages[destImageIndex] = new Bitmap(imageFilenames[sourceImageIndex]);
+            if (destImageIndex == currentFullscreenIndexOnBuffer)
+                this.Invoke(new EventHandler((DrawFullscreenView_Event)));
+        }
+
+        private void DrawFullscreenView_Event(object sender, EventArgs e) {
+            DrawFullscreenView();
         }
 
         protected override void OnPaint(PaintEventArgs e) {
@@ -311,25 +398,93 @@ namespace ImageViewerCE {
         }
 
         public override void Refresh() {
-            Draw();
+            if (isFullscreenMode)
+                DrawFullscreenView();
+            else
+                DrawThumbnailView();
         }
 
-        public void Draw_Event(object sender, EventArgs e) {
-            Draw();
+        public void DrawThumbnails_Event(object sender, EventArgs e) {
+            DrawThumbnailView();
         }
 
-        public void Draw() {
+        private void NavigateFullscreenView(bool forward) {
+            int destImageIndex;
+            int loadIndexOnFilenameList;
+            int loadOffset = imageCountFullscreen / 2;
+            if (forward) {
+                loadIndexOnFilenameList = currentFullscreenIndexOnFilenameList + loadOffset + 1;
+                currentFullscreenIndexOnFilenameList++;
+                if (currentFullscreenIndexOnBuffer == imageCountFullscreen - 1) {
+                    destImageIndex = currentFullscreenIndexOnBuffer - loadOffset;
+                    currentFullscreenIndexOnBuffer = 0;
+                }
+                else {
+                    destImageIndex = currentFullscreenIndexOnBuffer - loadOffset;
+                    if (destImageIndex < 0)
+                        destImageIndex += imageCountFullscreen;
+                    currentFullscreenIndexOnBuffer++;
+                }
+            }
+            else {
+                loadIndexOnFilenameList = currentFullscreenIndexOnFilenameList - loadOffset - 1;
+                currentFullscreenIndexOnFilenameList--;
+                if (currentFullscreenIndexOnBuffer == 0) {
+                    destImageIndex = currentFullscreenIndexOnBuffer + loadOffset;
+                    currentFullscreenIndexOnBuffer = imageCountFullscreen - 1;
+                }
+                else {
+                    destImageIndex = currentFullscreenIndexOnBuffer + loadOffset;
+                    if (destImageIndex >= imageCountFullscreen)
+                        destImageIndex -= imageCountFullscreen;
+                    currentFullscreenIndexOnBuffer--;
+                }
+            }
+            DrawFullscreenView();
+            WaitCallback w = new WaitCallback(loadSingleFullscreenImage);
+            ThreadPool.QueueUserWorkItem(w, new int[] { destImageIndex, loadIndexOnFilenameList });
+        }
+
+        public void DrawThumbnailView() {
             if (thumbnailsImage == null) {
                 screenG.Clear(backgroundColor);
                 this.Update();
                 return;
             }
             screenG.Clear(backgroundColor);
-            screenG.DrawImage(thumbnailsImage, previewAreaOnScreenRectangle, previewAreaOnThumbnailsImageRectangle, GraphicsUnit.Pixel);
+            screenG.DrawImage(thumbnailsImage, viewAreaOnScreenRectangle, viewAreaOnThumbnailsImageRectangle, GraphicsUnit.Pixel);
+            this.Update();
+        }
+
+        private void DrawFullscreenView() { 
+            Bitmap currentFullscreenImage = fullscreenImages[currentFullscreenIndexOnBuffer];
+            if (currentFullscreenImage == null) {
+                screenG.Clear(backgroundColor);
+                this.Update();
+                return;
+            }
+            Rectangle sourceFullscreenRectangle = new Rectangle(0, 0, currentFullscreenImage.Width, currentFullscreenImage.Height);
+            float sourceFullscreenRectangleRatio = ((float)sourceFullscreenRectangle.Width) / sourceFullscreenRectangle.Height;
+            Rectangle destFullscreenRectangleOnScreen;
+            if (sourceFullscreenRectangleRatio == viewAreaRatio) {
+                destFullscreenRectangleOnScreen = viewAreaOnScreenRectangle;
+            }
+            else if (sourceFullscreenRectangleRatio < viewAreaRatio) {
+                int fullscreenImageOnScreenWidth = (int)(viewAreaSize.Height * sourceFullscreenRectangleRatio);
+                destFullscreenRectangleOnScreen = new Rectangle((viewAreaSize.Width - fullscreenImageOnScreenWidth) / 2, 0,
+                        fullscreenImageOnScreenWidth, viewAreaSize.Height);
+            }
+            else {
+                int fullscreenImageOnScreenHeight = (int)(viewAreaSize.Width * sourceFullscreenRectangleRatio);
+                destFullscreenRectangleOnScreen = new Rectangle(0, (viewAreaSize.Height - fullscreenImageOnScreenHeight) / 2,
+                        viewAreaSize.Width, fullscreenImageOnScreenHeight);
+            }
+            screenG.Clear(backgroundColor);
+            screenG.DrawImage(currentFullscreenImage, destFullscreenRectangleOnScreen, sourceFullscreenRectangle, GraphicsUnit.Pixel);
             this.Update();
         }
        
-        private void toolBar_ButtonClick(object sender, ToolBarButtonClickEventArgs e) {
+        private void thumbnailsToolBar_ButtonClick(object sender, ToolBarButtonClickEventArgs e) {
             if (e.Button == browserButton) {
                 treeView.Visible = !treeView.Visible;
                 e.Button.Pushed = !e.Button.Pushed;
@@ -337,9 +492,19 @@ namespace ImageViewerCE {
         }
 
         private void ImageViewerCEForm_MouseDown(object sender, MouseEventArgs e) {
+            if (isFullscreenMode)
+                MouseDownInFullscreenMode(e);
+            else
+                MouseDownInThumbnailMode(e);
+        }
+
+        private void MouseDownInFullscreenMode(MouseEventArgs e) { 
+        }
+
+        private void MouseDownInThumbnailMode(MouseEventArgs e) {
             isMouseDown = true;
             mouseDragStartY = e.Y;
-            oldPreviewAreaOnThumbnailsImageY = previewAreaOnThumbnailsImageRectangle.Y;
+            oldPreviewAreaOnThumbnailsImageY = viewAreaOnThumbnailsImageRectangle.Y;
             mouseWayLength = 0;
             oldMouseWayLength = 0;
 
@@ -348,6 +513,16 @@ namespace ImageViewerCE {
         }
 
         private void ImageViewerCEForm_MouseUp(object sender, MouseEventArgs e) {
+            if (isFullscreenMode)
+                MouseUpInFullscreenMode(e);
+            else
+                MouseUpInThumbnailMode(e);
+        }
+
+        private void MouseUpInFullscreenMode(MouseEventArgs e) {            
+        }
+
+        private void MouseUpInThumbnailMode(MouseEventArgs e) {
             int mouseX = lastMouseX;
             int mouseY = lastMouseY;
 
@@ -374,10 +549,18 @@ namespace ImageViewerCE {
                 return;
 
             ThumbnailClicked(selectedImageIndex);
-
         }
 
         private void ImageViewerCEForm_MouseMove(object sender, MouseEventArgs e) {
+            if (isFullscreenMode)
+                MouseMoveInFullscreenMode(e);
+            else
+                MouseMoveInThumbnailMode(e);
+        }
+
+        private void MouseMoveInFullscreenMode(MouseEventArgs e) { }
+
+        private void MouseMoveInThumbnailMode(MouseEventArgs e) {
             // Do nothing if mouse wasn't pressed down before
             if (!isMouseDown)
                 return;
@@ -392,11 +575,11 @@ namespace ImageViewerCE {
                 // Calculate new previewAreaOnThumbnailsImageY
                 int speed = mouseWayLength - oldMouseWayLength;
                 if (scrollStyleIsGoogle)
-                    newY = previewAreaOnThumbnailsImageRectangle.Y + speed; // Google-Maps-Style
+                    newY = viewAreaOnThumbnailsImageRectangle.Y + speed; // Google-Maps-Style
                 else
-                    newY = previewAreaOnThumbnailsImageRectangle.Y - speed; // Inverse-Style
+                    newY = viewAreaOnThumbnailsImageRectangle.Y - speed; // Inverse-Style
                 mouseDragStartY = e.Y;
-                oldPreviewAreaOnThumbnailsImageY = previewAreaOnThumbnailsImageRectangle.Y;
+                oldPreviewAreaOnThumbnailsImageY = viewAreaOnThumbnailsImageRectangle.Y;
             } else if (e.Y < middleAreaEndY) { // Middle area
                 // Calculate new previewAreaOnThumbnailsImageY
                 int moveY;
@@ -409,23 +592,68 @@ namespace ImageViewerCE {
                 // Calculate new previewAreaOnThumbnailsImageY
                 int speed = mouseWayLength - oldMouseWayLength;
                 if (scrollStyleIsGoogle)
-                    newY = previewAreaOnThumbnailsImageRectangle.Y - speed; // Google-Maps-Style
+                    newY = viewAreaOnThumbnailsImageRectangle.Y - speed; // Google-Maps-Style
                 else
-                    newY = previewAreaOnThumbnailsImageRectangle.Y + speed; // Inverse-Style
+                    newY = viewAreaOnThumbnailsImageRectangle.Y + speed; // Inverse-Style
                 mouseDragStartY = e.Y;
-                oldPreviewAreaOnThumbnailsImageY = previewAreaOnThumbnailsImageRectangle.Y;
+                oldPreviewAreaOnThumbnailsImageY = viewAreaOnThumbnailsImageRectangle.Y;
             }
             // Clamp new drawSectionY
             newY = Math.Min(
-            newY, thumbnailsImage.Height - previewAreaSize.Height);
-            previewAreaOnThumbnailsImageRectangle.Y = Math.Max(
+            newY, thumbnailsImage.Height - viewAreaSize.Height);
+            viewAreaOnThumbnailsImageRectangle.Y = Math.Max(
                         newY, 0);
 
             lastMouseX = e.X;
             lastMouseY = e.Y;
             oldMouseWayLength = mouseWayLength;
 
-            Draw();
+            DrawThumbnailView();
+        }
+
+        private void ImageViewerCEForm_KeyDown(object sender, KeyEventArgs e) {
+            if ((e.KeyCode == System.Windows.Forms.Keys.Up)) {
+                // Rocker Up
+                // Up
+            }
+            if ((e.KeyCode == System.Windows.Forms.Keys.Down)) {
+                // Rocker Down
+                // Down
+            }
+            if ((e.KeyCode == System.Windows.Forms.Keys.Left)) {
+                if (isFullscreenMode)
+                    NavigateFullscreenView(false);
+            }
+            if ((e.KeyCode == System.Windows.Forms.Keys.Right)) {
+                if (isFullscreenMode)
+                    NavigateFullscreenView(true);                
+            }
+            if ((e.KeyCode == System.Windows.Forms.Keys.Enter)) {
+                // Enter
+            }
+
+        }
+
+        private void fullscreenToolBar_ButtonClick(object sender, ToolBarButtonClickEventArgs e) {
+            if (e.Button == thumbnailsButton) {
+                treeView.Visible = thumbnailsToolBar.Buttons[0].Pushed;
+                Controls.Remove(fullscreenToolBar);
+                Controls.Add(thumbnailsToolBar);
+                isFullscreenMode = false;
+                // Vorsicht: instabiler Synchronizations HACK !!! (lock Statement reicht hier
+                // nicht und ich hab keine Ahnung wie die "höherwertigen" Konstrukte bei C#
+                // heißen)
+                killFullscreenWorkingThread = true;
+                Thread.Sleep(0);
+                if (fullscreenWorkingThreadRunning) {
+                    for (int i = 0; i < 1000; i++) {
+                        Thread.Sleep(0);
+                        if (!fullscreenWorkingThreadRunning)
+                            break;
+                    }
+                }
+                killFullscreenWorkingThread = false;
+            }
         }
     }
 }
