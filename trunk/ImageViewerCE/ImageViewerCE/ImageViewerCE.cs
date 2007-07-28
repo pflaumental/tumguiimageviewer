@@ -22,6 +22,8 @@ namespace ImageViewerCE {
         bool isFullscreenMode;
         bool rotateFullscreenImages;
 
+        int navigationStepDistance;
+
         Size viewAreaSize;
         float viewAreaRatio;
         Rectangle viewAreaOnThumbnailsImageRectangle;
@@ -99,7 +101,7 @@ namespace ImageViewerCE {
             thumbnailWorkingThreadRunning = false;
             killThumbnailWorkingThread = false;
 
-            imageFilenames = null;
+            imageFilenames = null;            
 
             backgroundColor = Color.Black;
             foregroundColor = Color.White;
@@ -122,6 +124,8 @@ namespace ImageViewerCE {
             viewAreaRatio = ((float)viewAreaSize.Width) / viewAreaSize.Height;
             viewAreaOnThumbnailsImageRectangle = new Rectangle(0, stopperHeight, viewAreaSize.Width, viewAreaSize.Height);
             viewAreaOnScreenRectangle = new Rectangle(0, 0, viewAreaSize.Width, viewAreaSize.Height);
+
+            navigationStepDistance = viewAreaSize.Height / 2; // pixel
 
             screenG = this.CreateGraphics();
 
@@ -618,17 +622,25 @@ namespace ImageViewerCE {
         private void ImageViewerCEForm_KeyDown(object sender, KeyEventArgs e) {
             if ((e.KeyCode == System.Windows.Forms.Keys.Up)) {
                 // Rocker Up
-                // Up
+                if (isFullscreenMode)
+                    NavigateFullscreenView(true);
+                else
+                    NavigateThumbnailView(true);
             }
             if ((e.KeyCode == System.Windows.Forms.Keys.Down)) {
                 // Rocker Down
-                // Down
+                if (isFullscreenMode)
+                    NavigateFullscreenView(false);
+                else
+                    NavigateThumbnailView(false);
             }
             if ((e.KeyCode == System.Windows.Forms.Keys.Left)) {
+                // Rocker Left
                 if (isFullscreenMode)
                     NavigateFullscreenView(false);
             }
             if ((e.KeyCode == System.Windows.Forms.Keys.Right)) {
+                // Rocker Right
                 if (isFullscreenMode)
                     NavigateFullscreenView(true);                
             }
@@ -783,6 +795,16 @@ namespace ImageViewerCE {
             singleThumbnailWithSpacingSize = new Size(singleThumbnailImageSize.Width + thumbnailSpacing, singleThumbnailImageSize.Height + thumbnailSpacing);
             singleThumbnailImageRectangle = new Rectangle(0, 0, singleThumbnailImageSize.Width, singleThumbnailImageSize.Height);
             singleThumbnailImageRatio = singleThumbnailImageSize.Width / singleThumbnailImageSize.Height;
+        }
+
+        private void NavigateThumbnailView(bool up) {
+            int newY = viewAreaOnThumbnailsImageRectangle.Y + (up ? -navigationStepDistance : navigationStepDistance);
+            // Clamp new drawSectionY
+            newY = Math.Min(
+            newY, thumbnailsImage.Height - viewAreaSize.Height);
+            viewAreaOnThumbnailsImageRectangle.Y = Math.Max(
+                        newY, 0);
+            DrawThumbnailView();
         }
     }
 }
