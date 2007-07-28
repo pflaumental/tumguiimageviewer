@@ -128,12 +128,7 @@ namespace ImageViewerCE {
             thumbnailsPerLine = 4;
             thumbnailSpacing = 1;
 
-            int singleThumbnailWith = (ClientSize.Width - (thumbnailsPerLine + 1) * thumbnailSpacing)
-                    / thumbnailsPerLine;
-            singleThumbnailImageSize = new Size(singleThumbnailWith, singleThumbnailWith);
-            singleThumbnailWithSpacingSize = new Size(singleThumbnailImageSize.Width + thumbnailSpacing, singleThumbnailImageSize.Height + thumbnailSpacing);
-            singleThumbnailImageRectangle = new Rectangle(0, 0, singleThumbnailImageSize.Width, singleThumbnailImageSize.Height);
-            singleThumbnailImageRatio = singleThumbnailImageSize.Width / singleThumbnailImageSize.Height;
+            UpdateThumbnailSize();
             currentDirectory = "\\storage card";
             currentDirectoryIdString = currentDirectory.Replace('\\', '_') + "__";
             string tempPath = System.IO.Path.GetTempPath();
@@ -190,12 +185,12 @@ namespace ImageViewerCE {
         private void treeView_AfterSelect(object sender, TreeViewEventArgs e) {
             ChangeDirectory(treeView.SelectedNode.Tag.ToString());
 
-            KillThumbnailWorkingThread();
-
             thumbnailsImageFromCurrentFolder();
         }
 
         private void thumbnailsImageFromCurrentFolder() {
+            KillThumbnailWorkingThread();
+
             imageFilenames = new List<string>();
             imageFilenames.AddRange(System.IO.Directory.GetFiles(currentDirectory, "*.jpg"));
             imageFilenames.AddRange(System.IO.Directory.GetFiles(currentDirectory, "*.jpeg"));
@@ -495,6 +490,8 @@ namespace ImageViewerCE {
             if (e.Button == browserButton) {
                 treeView.Visible = !treeView.Visible;
                 e.Button.Pushed = !e.Button.Pushed;
+            } else if (e.Button == settingsButton) {
+                settingsPanel.Visible = true;
             }
         }
 
@@ -732,8 +729,8 @@ namespace ImageViewerCE {
             killThumbnailWorkingThread = true;
             Thread.Sleep(0);
             if (thumbnailWorkingThreadRunning) {
-                for (int i = 0; i < 400000; i++) {
-                    Thread.Sleep(0);
+                for (int i = 0; i < 20; i++) {
+                    Thread.Sleep(100);
                     if (!thumbnailWorkingThreadRunning)
                         break;
                 }
@@ -749,13 +746,38 @@ namespace ImageViewerCE {
             killFullscreenWorkingThread = true;
             Thread.Sleep(0);
             if (fullscreenWorkingThreadRunning) {
-                for (int i = 0; i < 400000; i++) {
-                    Thread.Sleep(0);
+                for (int i = 0; i < 20; i++) {
+                    Thread.Sleep(100);
                     if (!fullscreenWorkingThreadRunning)
                         break;
                 }
             }
             killFullscreenWorkingThread = false;
+        }
+
+        private void thumbnailsPerLinetrackBar_ValueChanged(object sender, EventArgs e) {
+            labelThumbnailsPerLineCount.Text = thumbnailsPerLinetrackBar.Value.ToString();
+        }
+
+        private void buttonCancel_Click(object sender, EventArgs e) {
+            thumbnailsPerLinetrackBar.Value = thumbnailsPerLine;
+            labelThumbnailsPerLineCount.Text = thumbnailsPerLine.ToString();
+            settingsPanel.Visible = false;
+        }
+
+        private void buttonOK_Click(object sender, EventArgs e) {
+            thumbnailsPerLine = thumbnailsPerLinetrackBar.Value;
+            settingsPanel.Visible = false;
+            UpdateThumbnailSize();
+            thumbnailsImageFromCurrentFolder();
+        }
+
+        private void UpdateThumbnailSize() {
+            int singleThumbnailWith = (ClientSize.Width - (thumbnailsPerLine + 1) * thumbnailSpacing) / thumbnailsPerLine;
+            singleThumbnailImageSize = new Size(singleThumbnailWith, singleThumbnailWith);
+            singleThumbnailWithSpacingSize = new Size(singleThumbnailImageSize.Width + thumbnailSpacing, singleThumbnailImageSize.Height + thumbnailSpacing);
+            singleThumbnailImageRectangle = new Rectangle(0, 0, singleThumbnailImageSize.Width, singleThumbnailImageSize.Height);
+            singleThumbnailImageRatio = singleThumbnailImageSize.Width / singleThumbnailImageSize.Height;
         }
     }
 }
