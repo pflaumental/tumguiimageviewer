@@ -465,7 +465,7 @@ namespace ImageViewerCE {
         private void DrawFullscreenView() { 
             Bitmap currentFullscreenImage = fullscreenImages[currentFullscreenIndexOnBuffer];
             if (currentFullscreenImage == null) {
-                screenG.Clear(backgroundColor);
+                screenG.Clear(foregroundColor);
                 this.Update();
                 return;
             }
