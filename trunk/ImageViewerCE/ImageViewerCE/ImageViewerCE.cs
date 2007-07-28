@@ -265,15 +265,15 @@ namespace ImageViewerCE {
                         + currentDirectoryIdString
                         + System.IO.Path.GetFileName(imageFilename);
                 if (System.IO.File.Exists(thumbnailTempPath)) {
-                    loadedImage = new Bitmap(thumbnailTempPath);
+                    loadedImage = CreateBitmap(thumbnailTempPath);
                     if (loadedImage.Width < singleThumbnailImageSize.Width
                             || loadedImage.Height < singleThumbnailImageSize.Height) {
                         loadedImage.Dispose();
-                        loadedImage = new Bitmap(imageFilename);
+                        loadedImage = CreateBitmap(imageFilename);
                     }
                 }
                 else {
-                    loadedImage = new Bitmap(imageFilename);
+                    loadedImage = CreateBitmap(imageFilename);
                 }
                 if (loadedImage.Width == singleThumbnailImageSize.Width
                         && loadedImage.Height == singleThumbnailImageSize.Height) {
@@ -365,7 +365,7 @@ namespace ImageViewerCE {
                     fullscreenImages[destIndex] = null;
                     continue;
                 }
-                fullscreenImages[destIndex] = new Bitmap(imageFilenames[srcIndex]);
+                fullscreenImages[destIndex] = CreateBitmap(imageFilenames[srcIndex]);
                 if (destIndex == currentFullscreenIndexOnBuffer) {
                     if (killFullscreenWorkingThread) {
                         fullscreenWorkingThreadRunning = false;
@@ -384,7 +384,7 @@ namespace ImageViewerCE {
             if (sourceImageIndex < 0 || sourceImageIndex >= imageFilenames.Count) 
                 fullscreenImages[destImageIndex] = null;
             else
-                fullscreenImages[destImageIndex] = new Bitmap(imageFilenames[sourceImageIndex]);
+                fullscreenImages[destImageIndex] = CreateBitmap(imageFilenames[sourceImageIndex]);
             if (destImageIndex == currentFullscreenIndexOnBuffer)
                 this.Invoke(new EventHandler((DrawFullscreenView_Event)));
         }
@@ -475,7 +475,7 @@ namespace ImageViewerCE {
                         fullscreenImageOnScreenWidth, viewAreaSize.Height);
             }
             else {
-                int fullscreenImageOnScreenHeight = (int)(viewAreaSize.Width * sourceFullscreenRectangleRatio);
+                int fullscreenImageOnScreenHeight = (int)(viewAreaSize.Width / sourceFullscreenRectangleRatio);
                 destFullscreenRectangleOnScreen = new Rectangle(0, (viewAreaSize.Height - fullscreenImageOnScreenHeight) / 2,
                         viewAreaSize.Width, fullscreenImageOnScreenHeight);
             }
@@ -653,6 +653,16 @@ namespace ImageViewerCE {
                     }
                 }
                 killFullscreenWorkingThread = false;
+            }
+        }
+
+        private Bitmap CreateBitmap(string filename) {
+            try {
+                return new Bitmap(filename);
+            } catch(Exception e) {
+                MessageBox.Show("Bild " + filename + " konnte nicht geöffnet werden.\nExceptiontext: \""
+                        + e.ToString() + "\"", "Fehler aufgetreten");
+                return new Bitmap(0, 0);
             }
         }
     }
