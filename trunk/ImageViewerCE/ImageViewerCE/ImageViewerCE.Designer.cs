@@ -31,6 +31,15 @@ namespace ImageViewerCE {
             this.fullscreenToolBar = new System.Windows.Forms.ToolBar();
             this.thumbnailsButton = new System.Windows.Forms.ToolBarButton();
             this.rotateButton = new System.Windows.Forms.ToolBarButton();
+            this.settingsButton = new System.Windows.Forms.ToolBarButton();
+            this.settingsPanel = new System.Windows.Forms.Panel();
+            this.labelSettings = new System.Windows.Forms.Label();
+            this.labelThumbnailsPerLine = new System.Windows.Forms.Label();
+            this.thumbnailsPerLinetrackBar = new System.Windows.Forms.TrackBar();
+            this.labelThumbnailsPerLineCount = new System.Windows.Forms.Label();
+            this.buttonOK = new System.Windows.Forms.Button();
+            this.buttonCancel = new System.Windows.Forms.Button();
+            this.settingsPanel.SuspendLayout();
             this.SuspendLayout();
             // 
             // treeView
@@ -48,10 +57,12 @@ namespace ImageViewerCE {
             this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource1"))));
             this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource2"))));
             this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource3"))));
+            this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource4"))));
             // 
             // thumbnailsToolBar
             // 
             this.thumbnailsToolBar.Buttons.Add(this.browserButton);
+            this.thumbnailsToolBar.Buttons.Add(this.settingsButton);
             this.thumbnailsToolBar.ImageList = this.menuAndBrowserIcons;
             this.thumbnailsToolBar.Name = "thumbnailsToolBar";
             this.thumbnailsToolBar.ButtonClick += new System.Windows.Forms.ToolBarButtonClickEventHandler(this.thumbnailsToolBar_ButtonClick);
@@ -79,12 +90,97 @@ namespace ImageViewerCE {
             this.rotateButton.ImageIndex = 3;
             this.rotateButton.Style = System.Windows.Forms.ToolBarButtonStyle.ToggleButton;
             // 
+            // settingsButton
+            // 
+            this.settingsButton.ImageIndex = 4;
+            // 
+            // settingsPanel
+            // 
+            this.settingsPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+                        | System.Windows.Forms.AnchorStyles.Left)
+                        | System.Windows.Forms.AnchorStyles.Right)));
+            this.settingsPanel.BackColor = System.Drawing.SystemColors.ControlLight;
+            this.settingsPanel.Controls.Add(this.buttonCancel);
+            this.settingsPanel.Controls.Add(this.buttonOK);
+            this.settingsPanel.Controls.Add(this.labelThumbnailsPerLineCount);
+            this.settingsPanel.Controls.Add(this.thumbnailsPerLinetrackBar);
+            this.settingsPanel.Controls.Add(this.labelThumbnailsPerLine);
+            this.settingsPanel.Controls.Add(this.labelSettings);
+            this.settingsPanel.Location = new System.Drawing.Point(3, 3);
+            this.settingsPanel.Name = "settingsPanel";
+            this.settingsPanel.Size = new System.Drawing.Size(232, 155);
+            this.settingsPanel.Visible = false;
+            // 
+            // labelSettings
+            // 
+            this.labelSettings.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+                        | System.Windows.Forms.AnchorStyles.Right)));
+            this.labelSettings.Font = new System.Drawing.Font("Tahoma", 12F, System.Drawing.FontStyle.Regular);
+            this.labelSettings.Location = new System.Drawing.Point(4, 4);
+            this.labelSettings.Name = "labelSettings";
+            this.labelSettings.Size = new System.Drawing.Size(225, 20);
+            this.labelSettings.Text = "Settings";
+            this.labelSettings.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            // 
+            // labelThumbnailsPerLine
+            // 
+            this.labelThumbnailsPerLine.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+                        | System.Windows.Forms.AnchorStyles.Right)));
+            this.labelThumbnailsPerLine.Location = new System.Drawing.Point(4, 42);
+            this.labelThumbnailsPerLine.Name = "labelThumbnailsPerLine";
+            this.labelThumbnailsPerLine.Size = new System.Drawing.Size(120, 20);
+            this.labelThumbnailsPerLine.Text = "Thumbnails per line:";
+            // 
+            // thumbnailsPerLinetrackBar
+            // 
+            this.thumbnailsPerLinetrackBar.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+                        | System.Windows.Forms.AnchorStyles.Right)));
+            this.thumbnailsPerLinetrackBar.LargeChange = 1;
+            this.thumbnailsPerLinetrackBar.Location = new System.Drawing.Point(4, 66);
+            this.thumbnailsPerLinetrackBar.Minimum = 1;
+            this.thumbnailsPerLinetrackBar.Name = "thumbnailsPerLinetrackBar";
+            this.thumbnailsPerLinetrackBar.Size = new System.Drawing.Size(225, 45);
+            this.thumbnailsPerLinetrackBar.TabIndex = 2;
+            this.thumbnailsPerLinetrackBar.Value = 4;
+            this.thumbnailsPerLinetrackBar.ValueChanged += new System.EventHandler(this.thumbnailsPerLinetrackBar_ValueChanged);
+            // 
+            // labelThumbnailsPerLineCount
+            // 
+            this.labelThumbnailsPerLineCount.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+                        | System.Windows.Forms.AnchorStyles.Right)));
+            this.labelThumbnailsPerLineCount.Font = new System.Drawing.Font("Tahoma", 11F, System.Drawing.FontStyle.Regular);
+            this.labelThumbnailsPerLineCount.Location = new System.Drawing.Point(131, 39);
+            this.labelThumbnailsPerLineCount.Name = "labelThumbnailsPerLineCount";
+            this.labelThumbnailsPerLineCount.Size = new System.Drawing.Size(100, 23);
+            this.labelThumbnailsPerLineCount.Text = "4";
+            this.labelThumbnailsPerLineCount.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            // 
+            // buttonOK
+            // 
+            this.buttonOK.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.buttonOK.Location = new System.Drawing.Point(157, 132);
+            this.buttonOK.Name = "buttonOK";
+            this.buttonOK.Size = new System.Drawing.Size(72, 20);
+            this.buttonOK.TabIndex = 4;
+            this.buttonOK.Text = "OK";
+            this.buttonOK.Click += new System.EventHandler(this.buttonOK_Click);
+            // 
+            // buttonCancel
+            // 
+            this.buttonCancel.Location = new System.Drawing.Point(79, 132);
+            this.buttonCancel.Name = "buttonCancel";
+            this.buttonCancel.Size = new System.Drawing.Size(72, 20);
+            this.buttonCancel.TabIndex = 5;
+            this.buttonCancel.Text = "Cancel";
+            this.buttonCancel.Click += new System.EventHandler(this.buttonCancel_Click);
+            // 
             // ImageViewerCEForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.AutoScroll = true;
             this.ClientSize = new System.Drawing.Size(240, 268);
+            this.Controls.Add(this.settingsPanel);
             this.Controls.Add(this.thumbnailsToolBar);
             this.Controls.Add(this.treeView);
             this.KeyPreview = true;
@@ -94,6 +190,7 @@ namespace ImageViewerCE {
             this.MouseMove += new System.Windows.Forms.MouseEventHandler(this.ImageViewerCEForm_MouseMove);
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.ImageViewerCEForm_KeyDown);
             this.MouseDown += new System.Windows.Forms.MouseEventHandler(this.ImageViewerCEForm_MouseDown);
+            this.settingsPanel.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -107,6 +204,14 @@ namespace ImageViewerCE {
         private System.Windows.Forms.ToolBar fullscreenToolBar;
         private System.Windows.Forms.ToolBarButton thumbnailsButton;
         private System.Windows.Forms.ToolBarButton rotateButton;
+        private System.Windows.Forms.ToolBarButton settingsButton;
+        private System.Windows.Forms.Panel settingsPanel;
+        private System.Windows.Forms.Label labelSettings;
+        private System.Windows.Forms.TrackBar thumbnailsPerLinetrackBar;
+        private System.Windows.Forms.Label labelThumbnailsPerLine;
+        private System.Windows.Forms.Button buttonCancel;
+        private System.Windows.Forms.Button buttonOK;
+        private System.Windows.Forms.Label labelThumbnailsPerLineCount;
 
     }
 }
