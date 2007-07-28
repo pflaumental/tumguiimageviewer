@@ -30,6 +30,7 @@ namespace ImageViewerCE {
             this.browserButton = new System.Windows.Forms.ToolBarButton();
             this.fullscreenToolBar = new System.Windows.Forms.ToolBar();
             this.thumbnailsButton = new System.Windows.Forms.ToolBarButton();
+            this.rotateButton = new System.Windows.Forms.ToolBarButton();
             this.SuspendLayout();
             // 
             // treeView
@@ -46,12 +47,13 @@ namespace ImageViewerCE {
             this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource"))));
             this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource1"))));
             this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource2"))));
+            this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource3"))));
             // 
-            // thumbnailToolBar
+            // thumbnailsToolBar
             // 
             this.thumbnailsToolBar.Buttons.Add(this.browserButton);
             this.thumbnailsToolBar.ImageList = this.menuAndBrowserIcons;
-            this.thumbnailsToolBar.Name = "thumbnailToolBar";
+            this.thumbnailsToolBar.Name = "thumbnailsToolBar";
             this.thumbnailsToolBar.ButtonClick += new System.Windows.Forms.ToolBarButtonClickEventHandler(this.thumbnailsToolBar_ButtonClick);
             // 
             // browserButton
@@ -63,6 +65,7 @@ namespace ImageViewerCE {
             // fullscreenToolBar
             // 
             this.fullscreenToolBar.Buttons.Add(this.thumbnailsButton);
+            this.fullscreenToolBar.Buttons.Add(this.rotateButton);
             this.fullscreenToolBar.ImageList = this.menuAndBrowserIcons;
             this.fullscreenToolBar.Name = "fullscreenToolBar";
             this.fullscreenToolBar.ButtonClick += new System.Windows.Forms.ToolBarButtonClickEventHandler(this.fullscreenToolBar_ButtonClick);
@@ -70,6 +73,11 @@ namespace ImageViewerCE {
             // thumbnailsButton
             // 
             this.thumbnailsButton.ImageIndex = 2;
+            // 
+            // rotateButton
+            // 
+            this.rotateButton.ImageIndex = 3;
+            this.rotateButton.Style = System.Windows.Forms.ToolBarButtonStyle.ToggleButton;
             // 
             // ImageViewerCEForm
             // 
@@ -98,6 +106,7 @@ namespace ImageViewerCE {
         private System.Windows.Forms.ToolBarButton browserButton;
         private System.Windows.Forms.ToolBar fullscreenToolBar;
         private System.Windows.Forms.ToolBarButton thumbnailsButton;
+        private System.Windows.Forms.ToolBarButton rotateButton;
 
     }
 }
