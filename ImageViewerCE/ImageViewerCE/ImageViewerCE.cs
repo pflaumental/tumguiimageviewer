@@ -20,6 +20,7 @@ namespace ImageViewerCE {
 
         List<string> imageFilenames;
         bool isFullscreenMode;
+        bool rotateFullscreenImages;
 
         Size viewAreaSize;
         float viewAreaRatio;
@@ -88,6 +89,8 @@ namespace ImageViewerCE {
 
             fullscreenImages = new Bitmap[imageCountFullscreen];
             currentFullscreenIndexOnFilenameList = 0;
+
+            rotateFullscreenImages = false;
 
             this.imageWidthFullscreen = ClientSize.Width;
             this.imageHeightFullscreen = ClientSize.Height;
@@ -185,19 +188,7 @@ namespace ImageViewerCE {
         private void treeView_AfterSelect(object sender, TreeViewEventArgs e) {
             ChangeDirectory(treeView.SelectedNode.Tag.ToString());
 
-            // Vorsicht: instabiler Synchronizations HACK !!! (lock Statement reicht hier
-            // nicht und ich hab keine Ahnung wie die "höherwertigen" Konstrukte bei C#
-            // heißen)
-            killThumbnailWorkingThread = true;
-            Thread.Sleep(0);
-            if (thumbnailWorkingThreadRunning) {                
-                for(int i=0; i<1000; i++) {
-                    Thread.Sleep(0);
-                    if (!thumbnailWorkingThreadRunning)
-                        break;
-                }
-            }
-            killThumbnailWorkingThread = false;
+            KillThumbnailWorkingThread();
 
             thumbnailsImageFromCurrentFolder();
         }
@@ -332,9 +323,8 @@ namespace ImageViewerCE {
             this.Controls.Add(fullscreenToolBar);
 
             currentFullscreenIndexOnFilenameList = imageIndex;
-            
-            for(int i=0; i<fullscreenImages.Length; i++)
-                fullscreenImages[i] = null;
+
+            ClearFullscreenImages();
 
             WaitCallback w = new WaitCallback(loadFullscreenImages);
             ThreadPool.QueueUserWorkItem(w, imageIndex);
@@ -365,7 +355,7 @@ namespace ImageViewerCE {
                     fullscreenImages[destIndex] = null;
                     continue;
                 }
-                fullscreenImages[destIndex] = CreateBitmap(imageFilenames[srcIndex]);
+                fullscreenImages[destIndex] = CreateBitmap(imageFilenames[srcIndex], rotateFullscreenImages);
                 if (destIndex == currentFullscreenIndexOnBuffer) {
                     if (killFullscreenWorkingThread) {
                         fullscreenWorkingThreadRunning = false;
@@ -384,7 +374,7 @@ namespace ImageViewerCE {
             if (sourceImageIndex < 0 || sourceImageIndex >= imageFilenames.Count) 
                 fullscreenImages[destImageIndex] = null;
             else
-                fullscreenImages[destImageIndex] = CreateBitmap(imageFilenames[sourceImageIndex]);
+                fullscreenImages[destImageIndex] = CreateBitmap(imageFilenames[sourceImageIndex], rotateFullscreenImages);
             if (destImageIndex == currentFullscreenIndexOnBuffer)
                 this.Invoke(new EventHandler((DrawFullscreenView_Event)));
         }
@@ -639,31 +629,116 @@ namespace ImageViewerCE {
                 treeView.Visible = thumbnailsToolBar.Buttons[0].Pushed;
                 Controls.Remove(fullscreenToolBar);
                 Controls.Add(thumbnailsToolBar);
-                isFullscreenMode = false;
-                // Vorsicht: instabiler Synchronizations HACK !!! (lock Statement reicht hier
-                // nicht und ich hab keine Ahnung wie die "höherwertigen" Konstrukte bei C#
-                // heißen)
-                killFullscreenWorkingThread = true;
-                Thread.Sleep(0);
-                if (fullscreenWorkingThreadRunning) {
-                    for (int i = 0; i < 1000; i++) {
-                        Thread.Sleep(0);
-                        if (!fullscreenWorkingThreadRunning)
-                            break;
-                    }
-                }
-                killFullscreenWorkingThread = false;
+                KillFullscreenWorkingThread();
+            } else if (e.Button == rotateButton) {
+                rotateFullscreenImages = e.Button.Pushed;
+                KillFullscreenWorkingThread();
+                ClearFullscreenImages();
+                GC.Collect();
+                loadFullscreenImages(currentFullscreenIndexOnFilenameList);
             }
         }
 
         private Bitmap CreateBitmap(string filename) {
             try {
                 return new Bitmap(filename);
-            } catch(Exception e) {
-                MessageBox.Show("Bild " + filename + " konnte nicht geöffnet werden.\nExceptiontext: \""
-                        + e.ToString() + "\"", "Fehler aufgetreten");
-                return new Bitmap(0, 0);
             }
+            
+            catch {
+                GC.Collect();
+                try {
+                    return new Bitmap(filename);
+                } catch (Exception e) {
+                    MessageBox.Show("Bild " + filename + " konnte nicht geöffnet werden.\n Aufgetretener Fehler: \""
+                            + e.ToString() + "\"", "Fehler");
+                    return new Bitmap(1, 1);
+                }
+            }
+        }
+
+        private Bitmap CreateBitmap(string filename, bool rotate) {
+            Bitmap sourceBitmap = CreateBitmap(filename);
+            if (rotate) {
+                try {
+                    Bitmap destBitmap = new Bitmap(sourceBitmap.Height, sourceBitmap.Width);
+                    System.Drawing.Imaging.BitmapData destData = destBitmap.LockBits(new Rectangle(0, 0, destBitmap.Width, destBitmap.Height), System.Drawing.Imaging.ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+                    IntPtr destAdress = destData.Scan0;
+                    int numDestBytes = destData.Width * destData.Height * 3;
+                    byte[] destRgbValues = new byte[numDestBytes];
+
+                    System.Drawing.Imaging.BitmapData sourceData = sourceBitmap.LockBits(new Rectangle(0, 0, sourceBitmap.Width, sourceBitmap.Height), System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+                    IntPtr sourceAdress = sourceData.Scan0;
+                    int numSourceBytes = sourceData.Width * sourceData.Height * 3;
+                    byte[] sourceRgbValues = new byte[numSourceBytes];
+                    System.Runtime.InteropServices.Marshal.Copy(sourceAdress, sourceRgbValues, 0, numSourceBytes);
+
+                    // Rotate image pixelwise
+                    int destPos = 0;
+                    int sourcePos = 0;
+                    for (int sourceY = 0; sourceY < sourceData.Height; sourceY++) {
+                        sourcePos = sourceY * sourceData.Width * 3;
+                        destPos = sourceY * 3;
+                        for (int sourceX = 0; sourceX < sourceData.Width; sourceX++) {
+                            destRgbValues[destPos] = sourceRgbValues[sourcePos];
+                            destRgbValues[destPos + 1] = sourceRgbValues[sourcePos + 1];
+                            destRgbValues[destPos + 2] = sourceRgbValues[sourcePos + 2];
+
+                            sourcePos += 3;
+                            destPos += (destData.Width * 3);
+                        }
+                    }
+
+                    System.Runtime.InteropServices.Marshal.Copy(destRgbValues, 0, destAdress, numDestBytes);
+
+                    sourceBitmap.UnlockBits(sourceData);
+                    destBitmap.UnlockBits(destData);
+
+                    return destBitmap;
+                } catch (Exception e) {
+                    GC.Collect();
+                    MessageBox.Show("Bildrotation fehlgeschlagen. Aufgetretener Fehler: \"" + e.ToString() + "\"", "Fehler");
+                    return sourceBitmap;
+                }
+            } else
+                return sourceBitmap;
+        }
+
+        private void ClearFullscreenImages() {
+            for (int i = 0; i < fullscreenImages.Length; i++)
+                fullscreenImages[i] = null;
+        }
+
+        private void KillThumbnailWorkingThread() {
+            // Vorsicht: instabiler Synchronizations HACK !!! (lock Statement reicht hier
+            // nicht und ich hab keine Ahnung wie die "höherwertigen" Konstrukte bei C#
+            // heißen)
+            killThumbnailWorkingThread = true;
+            Thread.Sleep(0);
+            if (thumbnailWorkingThreadRunning) {
+                for (int i = 0; i < 400000; i++) {
+                    Thread.Sleep(0);
+                    if (!thumbnailWorkingThreadRunning)
+                        break;
+                }
+            }
+            killThumbnailWorkingThread = false;
+        }
+
+        private void KillFullscreenWorkingThread() {
+            isFullscreenMode = false;
+            // Vorsicht: instabiler Synchronizations HACK !!! (lock Statement reicht hier
+            // nicht und ich hab keine Ahnung wie die "höherwertigen" Konstrukte bei C#
+            // heißen)
+            killFullscreenWorkingThread = true;
+            Thread.Sleep(0);
+            if (fullscreenWorkingThreadRunning) {
+                for (int i = 0; i < 400000; i++) {
+                    Thread.Sleep(0);
+                    if (!fullscreenWorkingThreadRunning)
+                        break;
+                }
+            }
+            killFullscreenWorkingThread = false;
         }
     }
 }
