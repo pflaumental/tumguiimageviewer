@@ -29,6 +29,7 @@ namespace ImageViewerCE {
 
         Size singleThumbnailImageSize;
         Rectangle singleThumbnailImageRectangle;
+        float singleThumbnailImageRatio;
         Size singleThumbnailWithSpacingSize;
         Rectangle targetOnThumbnailsImageRectangle;
 
@@ -132,6 +133,7 @@ namespace ImageViewerCE {
             singleThumbnailImageSize = new Size(singleThumbnailWith, singleThumbnailWith);
             singleThumbnailWithSpacingSize = new Size(singleThumbnailImageSize.Width + thumbnailSpacing, singleThumbnailImageSize.Height + thumbnailSpacing);
             singleThumbnailImageRectangle = new Rectangle(0, 0, singleThumbnailImageSize.Width, singleThumbnailImageSize.Height);
+            singleThumbnailImageRatio = singleThumbnailImageSize.Width / singleThumbnailImageSize.Height;
             currentDirectory = "\\storage card";
             currentDirectoryIdString = currentDirectory.Replace('\\', '_') + "__";
             string tempPath = System.IO.Path.GetTempPath();
@@ -275,7 +277,22 @@ namespace ImageViewerCE {
                     singleThumbnailImage = new Bitmap(singleThumbnailImageSize.Width, singleThumbnailImageSize.Height);
                     Rectangle loadedImageRectangle = new Rectangle(0, 0, loadedImage.Width, loadedImage.Height);
                     Graphics singleThumbnailImageG = Graphics.FromImage(singleThumbnailImage);
-                    singleThumbnailImageG.DrawImage(loadedImage, singleThumbnailImageRectangle, loadedImageRectangle, GraphicsUnit.Pixel);
+
+                    float loadedImageRatio = (float)loadedImage.Width / loadedImage.Height;
+                    Rectangle destRectangleOnSingleThumbnailImage;
+                    if (loadedImageRatio == singleThumbnailImageRatio) {
+                        destRectangleOnSingleThumbnailImage = singleThumbnailImageRectangle;
+                    } else if (loadedImageRatio < singleThumbnailImageRatio) {
+                        int loadedImageOnSingleThumbnailImageWidth = (int)(singleThumbnailImage.Height * loadedImageRatio);
+                        destRectangleOnSingleThumbnailImage = new Rectangle((singleThumbnailImage.Width - loadedImageOnSingleThumbnailImageWidth) / 2, 0,
+                                loadedImageOnSingleThumbnailImageWidth, singleThumbnailImage.Height);
+                    } else {
+                        int loadedImageOnSingleThumbnailImageHeight = (int)(singleThumbnailImage.Width / loadedImageRatio);
+                        destRectangleOnSingleThumbnailImage = new Rectangle(0, (singleThumbnailImage.Height - loadedImageOnSingleThumbnailImageHeight) / 2,
+                                singleThumbnailImage.Width, loadedImageOnSingleThumbnailImageHeight);
+                    }
+
+                    singleThumbnailImageG.DrawImage(loadedImage, destRectangleOnSingleThumbnailImage, loadedImageRectangle, GraphicsUnit.Pixel);
                     loadedImage.Dispose();
 
                     singleThumbnailImage.Save(thumbnailTempPath, System.Drawing.Imaging.ImageFormat.Bmp);
