@@ -28,17 +28,21 @@ namespace ImageViewerCE {
             this.menuAndBrowserIcons = new System.Windows.Forms.ImageList();
             this.thumbnailsToolBar = new System.Windows.Forms.ToolBar();
             this.browserButton = new System.Windows.Forms.ToolBarButton();
+            this.settingsButton = new System.Windows.Forms.ToolBarButton();
             this.fullscreenToolBar = new System.Windows.Forms.ToolBar();
             this.thumbnailsButton = new System.Windows.Forms.ToolBarButton();
             this.rotateButton = new System.Windows.Forms.ToolBarButton();
-            this.settingsButton = new System.Windows.Forms.ToolBarButton();
             this.settingsPanel = new System.Windows.Forms.Panel();
-            this.labelSettings = new System.Windows.Forms.Label();
-            this.labelThumbnailsPerLine = new System.Windows.Forms.Label();
-            this.thumbnailsPerLinetrackBar = new System.Windows.Forms.TrackBar();
-            this.labelThumbnailsPerLineCount = new System.Windows.Forms.Label();
-            this.buttonOK = new System.Windows.Forms.Button();
             this.buttonCancel = new System.Windows.Forms.Button();
+            this.buttonOK = new System.Windows.Forms.Button();
+            this.labelThumbnailsPerLineCount = new System.Windows.Forms.Label();
+            this.thumbnailsPerLinetrackBar = new System.Windows.Forms.TrackBar();
+            this.labelThumbnailsPerLine = new System.Windows.Forms.Label();
+            this.labelSettings = new System.Windows.Forms.Label();
+            this.backwardButton = new System.Windows.Forms.ToolBarButton();
+            this.forwardButton = new System.Windows.Forms.ToolBarButton();
+            this.seperator1 = new System.Windows.Forms.ToolBarButton();
+            this.seperator2 = new System.Windows.Forms.ToolBarButton();
             this.settingsPanel.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -58,6 +62,8 @@ namespace ImageViewerCE {
             this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource2"))));
             this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource3"))));
             this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource4"))));
+            this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource5"))));
+            this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource6"))));
             // 
             // thumbnailsToolBar
             // 
@@ -73,10 +79,18 @@ namespace ImageViewerCE {
             this.browserButton.Pushed = true;
             this.browserButton.ToolTipText = "Show Browser";
             // 
+            // settingsButton
+            // 
+            this.settingsButton.ImageIndex = 4;
+            // 
             // fullscreenToolBar
             // 
             this.fullscreenToolBar.Buttons.Add(this.thumbnailsButton);
+            this.fullscreenToolBar.Buttons.Add(this.seperator1);
             this.fullscreenToolBar.Buttons.Add(this.rotateButton);
+            this.fullscreenToolBar.Buttons.Add(this.seperator2);
+            this.fullscreenToolBar.Buttons.Add(this.backwardButton);
+            this.fullscreenToolBar.Buttons.Add(this.forwardButton);
             this.fullscreenToolBar.ImageList = this.menuAndBrowserIcons;
             this.fullscreenToolBar.Name = "fullscreenToolBar";
             this.fullscreenToolBar.ButtonClick += new System.Windows.Forms.ToolBarButtonClickEventHandler(this.fullscreenToolBar_ButtonClick);
@@ -89,10 +103,6 @@ namespace ImageViewerCE {
             // 
             this.rotateButton.ImageIndex = 3;
             this.rotateButton.Style = System.Windows.Forms.ToolBarButtonStyle.ToggleButton;
-            // 
-            // settingsButton
-            // 
-            this.settingsButton.ImageIndex = 4;
             // 
             // settingsPanel
             // 
@@ -111,25 +121,35 @@ namespace ImageViewerCE {
             this.settingsPanel.Size = new System.Drawing.Size(232, 155);
             this.settingsPanel.Visible = false;
             // 
-            // labelSettings
+            // buttonCancel
             // 
-            this.labelSettings.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            this.buttonCancel.Location = new System.Drawing.Point(79, 132);
+            this.buttonCancel.Name = "buttonCancel";
+            this.buttonCancel.Size = new System.Drawing.Size(72, 20);
+            this.buttonCancel.TabIndex = 5;
+            this.buttonCancel.Text = "Cancel";
+            this.buttonCancel.Click += new System.EventHandler(this.buttonCancel_Click);
+            // 
+            // buttonOK
+            // 
+            this.buttonOK.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.buttonOK.Location = new System.Drawing.Point(157, 132);
+            this.buttonOK.Name = "buttonOK";
+            this.buttonOK.Size = new System.Drawing.Size(72, 20);
+            this.buttonOK.TabIndex = 4;
+            this.buttonOK.Text = "OK";
+            this.buttonOK.Click += new System.EventHandler(this.buttonOK_Click);
+            // 
+            // labelThumbnailsPerLineCount
+            // 
+            this.labelThumbnailsPerLineCount.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
                         | System.Windows.Forms.AnchorStyles.Right)));
-            this.labelSettings.Font = new System.Drawing.Font("Tahoma", 12F, System.Drawing.FontStyle.Regular);
-            this.labelSettings.Location = new System.Drawing.Point(4, 4);
-            this.labelSettings.Name = "labelSettings";
-            this.labelSettings.Size = new System.Drawing.Size(225, 20);
-            this.labelSettings.Text = "Settings";
-            this.labelSettings.TextAlign = System.Drawing.ContentAlignment.TopCenter;
-            // 
-            // labelThumbnailsPerLine
-            // 
-            this.labelThumbnailsPerLine.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
-                        | System.Windows.Forms.AnchorStyles.Right)));
-            this.labelThumbnailsPerLine.Location = new System.Drawing.Point(4, 42);
-            this.labelThumbnailsPerLine.Name = "labelThumbnailsPerLine";
-            this.labelThumbnailsPerLine.Size = new System.Drawing.Size(120, 20);
-            this.labelThumbnailsPerLine.Text = "Thumbnails per line:";
+            this.labelThumbnailsPerLineCount.Font = new System.Drawing.Font("Tahoma", 11F, System.Drawing.FontStyle.Regular);
+            this.labelThumbnailsPerLineCount.Location = new System.Drawing.Point(131, 39);
+            this.labelThumbnailsPerLineCount.Name = "labelThumbnailsPerLineCount";
+            this.labelThumbnailsPerLineCount.Size = new System.Drawing.Size(100, 23);
+            this.labelThumbnailsPerLineCount.Text = "4";
+            this.labelThumbnailsPerLineCount.TextAlign = System.Drawing.ContentAlignment.TopCenter;
             // 
             // thumbnailsPerLinetrackBar
             // 
@@ -144,35 +164,41 @@ namespace ImageViewerCE {
             this.thumbnailsPerLinetrackBar.Value = 4;
             this.thumbnailsPerLinetrackBar.ValueChanged += new System.EventHandler(this.thumbnailsPerLinetrackBar_ValueChanged);
             // 
-            // labelThumbnailsPerLineCount
+            // labelThumbnailsPerLine
             // 
-            this.labelThumbnailsPerLineCount.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            this.labelThumbnailsPerLine.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
                         | System.Windows.Forms.AnchorStyles.Right)));
-            this.labelThumbnailsPerLineCount.Font = new System.Drawing.Font("Tahoma", 11F, System.Drawing.FontStyle.Regular);
-            this.labelThumbnailsPerLineCount.Location = new System.Drawing.Point(131, 39);
-            this.labelThumbnailsPerLineCount.Name = "labelThumbnailsPerLineCount";
-            this.labelThumbnailsPerLineCount.Size = new System.Drawing.Size(100, 23);
-            this.labelThumbnailsPerLineCount.Text = "4";
-            this.labelThumbnailsPerLineCount.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            this.labelThumbnailsPerLine.Location = new System.Drawing.Point(4, 42);
+            this.labelThumbnailsPerLine.Name = "labelThumbnailsPerLine";
+            this.labelThumbnailsPerLine.Size = new System.Drawing.Size(120, 20);
+            this.labelThumbnailsPerLine.Text = "Thumbnails per line:";
             // 
-            // buttonOK
+            // labelSettings
             // 
-            this.buttonOK.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.buttonOK.Location = new System.Drawing.Point(157, 132);
-            this.buttonOK.Name = "buttonOK";
-            this.buttonOK.Size = new System.Drawing.Size(72, 20);
-            this.buttonOK.TabIndex = 4;
-            this.buttonOK.Text = "OK";
-            this.buttonOK.Click += new System.EventHandler(this.buttonOK_Click);
+            this.labelSettings.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+                        | System.Windows.Forms.AnchorStyles.Right)));
+            this.labelSettings.Font = new System.Drawing.Font("Tahoma", 12F, System.Drawing.FontStyle.Regular);
+            this.labelSettings.Location = new System.Drawing.Point(4, 4);
+            this.labelSettings.Name = "labelSettings";
+            this.labelSettings.Size = new System.Drawing.Size(225, 20);
+            this.labelSettings.Text = "Settings";
+            this.labelSettings.TextAlign = System.Drawing.ContentAlignment.TopCenter;
             // 
-            // buttonCancel
+            // backwardButton
             // 
-            this.buttonCancel.Location = new System.Drawing.Point(79, 132);
-            this.buttonCancel.Name = "buttonCancel";
-            this.buttonCancel.Size = new System.Drawing.Size(72, 20);
-            this.buttonCancel.TabIndex = 5;
-            this.buttonCancel.Text = "Cancel";
-            this.buttonCancel.Click += new System.EventHandler(this.buttonCancel_Click);
+            this.backwardButton.ImageIndex = 6;
+            // 
+            // forwardButton
+            // 
+            this.forwardButton.ImageIndex = 5;
+            // 
+            // seperator1
+            // 
+            this.seperator1.Style = System.Windows.Forms.ToolBarButtonStyle.Separator;
+            // 
+            // seperator2
+            // 
+            this.seperator2.Style = System.Windows.Forms.ToolBarButtonStyle.Separator;
             // 
             // ImageViewerCEForm
             // 
@@ -212,6 +238,10 @@ namespace ImageViewerCE {
         private System.Windows.Forms.Button buttonCancel;
         private System.Windows.Forms.Button buttonOK;
         private System.Windows.Forms.Label labelThumbnailsPerLineCount;
+        private System.Windows.Forms.ToolBarButton seperator1;
+        private System.Windows.Forms.ToolBarButton seperator2;
+        private System.Windows.Forms.ToolBarButton backwardButton;
+        private System.Windows.Forms.ToolBarButton forwardButton;
 
     }
 }

@@ -650,7 +650,12 @@ namespace ImageViewerCE {
                 ClearFullscreenImages();
                 GC.Collect();
                 loadFullscreenImages(currentFullscreenIndexOnFilenameList);
+            } else if (e.Button == forwardButton) {
+                NavigateFullscreenView(true);
+            } else if (e.Button == backwardButton) {
+                NavigateFullscreenView(false);
             }
+
         }
 
         private Bitmap CreateBitmap(string filename) {
