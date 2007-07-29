@@ -7,6 +7,7 @@ using System.Text;
 using System.Windows.Forms;
 using System.IO;
 using System.Threading;
+using System.Drawing.Imaging;
 
 
 namespace ImageViewerCE {
@@ -66,9 +67,15 @@ namespace ImageViewerCE {
 
         // Scrolling/Clicking Stuff:
         int mouseDragStartY;
+        int mouseDragStartX;
+
         int lastMouseX;
         int lastMouseY;
         int mouseWayLength;
+
+        int mouseWayLengthX;
+        int mouseWayLengthY;
+
         int oldMouseWayLength;
         int oldPreviewAreaOnThumbnailsImageY;
         bool isMouseDown;
@@ -81,6 +88,10 @@ namespace ImageViewerCE {
         int imageHeightFullscreen;
 
         Bitmap[] fullscreenImages;
+
+        Rectangle viewRectangle;
+        float zoomFactor;
+        bool isZooming;
         
         public ImageViewerCEForm() {
             InitializeComponent();
@@ -101,7 +112,11 @@ namespace ImageViewerCE {
             thumbnailWorkingThreadRunning = false;
             killThumbnailWorkingThread = false;
 
-            imageFilenames = null;            
+            imageFilenames = null;
+
+            viewRectangle = new Rectangle(0, 0, ClientSize.Width, ClientSize.Height);
+            zoomFactor = 0.8f;
+            isZooming = false;
 
             backgroundColor = Color.Black;
             foregroundColor = Color.White;
@@ -464,30 +479,112 @@ namespace ImageViewerCE {
 
         private void DrawFullscreenView() { 
             Bitmap currentFullscreenImage = fullscreenImages[currentFullscreenIndexOnBuffer];
+
             if (currentFullscreenImage == null) {
                 screenG.Clear(foregroundColor);
                 this.Update();
                 return;
             }
+
             Rectangle sourceFullscreenRectangle = new Rectangle(0, 0, currentFullscreenImage.Width, currentFullscreenImage.Height);
             float sourceFullscreenRectangleRatio = ((float)sourceFullscreenRectangle.Width) / sourceFullscreenRectangle.Height;
-            Rectangle destFullscreenRectangleOnScreen;
-            if (sourceFullscreenRectangleRatio == viewAreaRatio) {
-                destFullscreenRectangleOnScreen = viewAreaOnScreenRectangle;
-            }
-            else if (sourceFullscreenRectangleRatio < viewAreaRatio) {
+
+            if (isZooming) {
+                Rectangle source = new Rectangle();
+                Rectangle dest = new Rectangle();
+
                 int fullscreenImageOnScreenWidth = (int)(viewAreaSize.Height * sourceFullscreenRectangleRatio);
-                destFullscreenRectangleOnScreen = new Rectangle((viewAreaSize.Width - fullscreenImageOnScreenWidth) / 2, 0,
-                        fullscreenImageOnScreenWidth, viewAreaSize.Height);
-            }
+
+                float ratio = (float)viewRectangle.Width / viewRectangle.Height;
+
+                if (sourceFullscreenRectangleRatio == ratio) {
+                    source = viewRectangle;
+                    dest = ClientRectangle;
+                } else if (sourceFullscreenRectangleRatio < ratio) {
+                    int start = (viewAreaSize.Width - fullscreenImageOnScreenWidth) / 2;
+                    int end = start + fullscreenImageOnScreenWidth;
+                    
+                    // source rectangle
+                    if (viewRectangle.X < start) {
+                        source.X = 0;
+                    } else {
+                        int offset = viewRectangle.X - start;
+                        source.X = (offset * sourceFullscreenRectangle.Width) / fullscreenImageOnScreenWidth;
+                    }
+                    source.Y = (viewRectangle.Y * sourceFullscreenRectangle.Height) / ClientSize.Height;
+                    if (viewRectangle.X < start)
+                        source.Width = sourceFullscreenRectangle.Width;
+                    else 
+                        source.Width = (viewRectangle.Width * sourceFullscreenRectangle.Width) / fullscreenImageOnScreenWidth;
+                    source.Height = (viewRectangle.Height * sourceFullscreenRectangle.Height) / ClientSize.Height;
+               
+                    // destination rectangle
+                    if (viewRectangle.X < start) 
+                        dest.Width = (fullscreenImageOnScreenWidth * ClientSize.Width) / viewRectangle.Width;
+                    else 
+                        dest.Width = ClientSize.Width;            
+                    
+                    if (viewRectangle.X < start) 
+                        dest.X = (ClientSize.Width - dest.Width) / 2;
+                    else
+                        dest.X = 0;
+                    dest.Y = 0;
+                    dest.Height = ClientSize.Height;
+                } else {
+                    int fullscreenImageOnScreenHeight = (int)(viewAreaSize.Width / sourceFullscreenRectangleRatio);
+                    int start = (viewAreaSize.Height - fullscreenImageOnScreenHeight) / 2;
+                    int end = start + fullscreenImageOnScreenHeight;
+
+                    // source rectangle
+                    if (viewRectangle.Y < start) {
+                        source.Y = 0;
+                    } else {
+                        int offset = viewRectangle.Y - start;
+                        source.Y = (offset * sourceFullscreenRectangle.Height) / fullscreenImageOnScreenHeight;
+                    }
+                    source.X = (viewRectangle.X * sourceFullscreenRectangle.Width) / ClientSize.Width;
+                    source.Width = (viewRectangle.Width * sourceFullscreenRectangle.Width) / ClientSize.Width;
+                    if (viewRectangle.Y < start) 
+                        source.Height = sourceFullscreenRectangle.Height;
+                    else
+                        source.Height = (viewRectangle.Height * sourceFullscreenRectangle.Height) / fullscreenImageOnScreenHeight;
+
+                    // destination rectangle             
+                    if (viewRectangle.Y < start)
+                        dest.Height = (fullscreenImageOnScreenHeight * ClientSize.Height) / viewRectangle.Height;
+                    else
+                        dest.Height = ClientSize.Height;
+                    dest.X = 0;
+
+                    if (viewRectangle.Y < start) 
+                        dest.Y = (ClientSize.Height - dest.Height) / 2;
+                    else
+                        dest.Y = 0;
+                    dest.Width = ClientSize.Width;
+                }
+                screenG.Clear(backgroundColor);
+                screenG.DrawImage(currentFullscreenImage, dest, source, GraphicsUnit.Pixel);
+                this.Update();
+            }                       
             else {
-                int fullscreenImageOnScreenHeight = (int)(viewAreaSize.Width / sourceFullscreenRectangleRatio);
-                destFullscreenRectangleOnScreen = new Rectangle(0, (viewAreaSize.Height - fullscreenImageOnScreenHeight) / 2,
-                        viewAreaSize.Width, fullscreenImageOnScreenHeight);
+                Rectangle destFullscreenRectangleOnScreen;
+                if (sourceFullscreenRectangleRatio == viewAreaRatio) {
+                    destFullscreenRectangleOnScreen = viewAreaOnScreenRectangle;
+                } else if (sourceFullscreenRectangleRatio < viewAreaRatio) {
+                    int fullscreenImageOnScreenWidth = (int)(viewAreaSize.Height * sourceFullscreenRectangleRatio);
+                    destFullscreenRectangleOnScreen = new Rectangle((viewAreaSize.Width - fullscreenImageOnScreenWidth) / 2, 0,
+                            fullscreenImageOnScreenWidth, viewAreaSize.Height);
+                } else {
+                    int fullscreenImageOnScreenHeight = (int)(viewAreaSize.Width / sourceFullscreenRectangleRatio);
+                    destFullscreenRectangleOnScreen = new Rectangle(0, (viewAreaSize.Height - fullscreenImageOnScreenHeight) / 2,
+                            viewAreaSize.Width, fullscreenImageOnScreenHeight);
+                }
+                screenG.Clear(backgroundColor);
+
+                screenG.DrawImage(currentFullscreenImage, destFullscreenRectangleOnScreen, sourceFullscreenRectangle, GraphicsUnit.Pixel);
+                this.Update();
             }
-            screenG.Clear(backgroundColor);
-            screenG.DrawImage(currentFullscreenImage, destFullscreenRectangleOnScreen, sourceFullscreenRectangle, GraphicsUnit.Pixel);
-            this.Update();
+          
         }
        
         private void thumbnailsToolBar_ButtonClick(object sender, ToolBarButtonClickEventArgs e) {
@@ -506,7 +603,17 @@ namespace ImageViewerCE {
                 MouseDownInThumbnailMode(e);
         }
 
-        private void MouseDownInFullscreenMode(MouseEventArgs e) { 
+        private void MouseDownInFullscreenMode(MouseEventArgs e) {
+            isMouseDown = true;
+
+            lastMouseX = e.X;
+            lastMouseY = e.Y;
+
+            mouseDragStartX = e.X;
+            mouseDragStartY = e.Y;
+
+            mouseWayLengthX = 0;
+            mouseWayLengthY = 0;
         }
 
         private void MouseDownInThumbnailMode(MouseEventArgs e) {
@@ -527,7 +634,24 @@ namespace ImageViewerCE {
                 MouseUpInThumbnailMode(e);
         }
 
-        private void MouseUpInFullscreenMode(MouseEventArgs e) {            
+        private void MouseUpInFullscreenMode(MouseEventArgs e) {
+            isMouseDown = false;
+            
+            lastMouseX = -1;
+            lastMouseY = -1;
+
+            int w = (int)(((float)mouseWayLengthX / viewAreaSize.Width) * viewRectangle.Width);
+            int h = (int)(((float)mouseWayLengthY / viewAreaSize.Height) * viewRectangle.Height);
+            int x = viewRectangle.X + (int)(((float)mouseDragStartX / viewAreaSize.Width) * viewRectangle.Width);
+            int y = viewRectangle.Y + (int)(((float)mouseDragStartY / viewAreaSize.Height) * viewRectangle.Height);
+
+            viewRectangle.Width = w;
+            viewRectangle.Height = h;
+            viewRectangle.X = x;
+            viewRectangle.Y = y;
+
+            isZooming = true;
+            DrawFullscreenView();         
         }
 
         private void MouseUpInThumbnailMode(MouseEventArgs e) {
@@ -566,7 +690,26 @@ namespace ImageViewerCE {
                 MouseMoveInThumbnailMode(e);
         }
 
-        private void MouseMoveInFullscreenMode(MouseEventArgs e) { }
+        private void MouseMoveInFullscreenMode(MouseEventArgs e) {
+            if (!isMouseDown)
+                return;
+            
+            mouseWayLengthX += Math.Abs(e.X - lastMouseX);
+            mouseWayLengthY += Math.Abs(e.Y - lastMouseY);
+
+            //int dx = e.X - lastMouseX;
+            //int dy = e.Y - lastMouseY;
+
+            //viewRectangle.X += dx;
+            //viewRectangle.Y += dy;
+
+            lastMouseX = e.X;
+            lastMouseY = e.Y;
+
+           
+
+            //DrawFullscreenView();
+        }
 
         private void MouseMoveInThumbnailMode(MouseEventArgs e) {
             // Do nothing if mouse wasn't pressed down before
@@ -623,29 +766,35 @@ namespace ImageViewerCE {
             if ((e.KeyCode == System.Windows.Forms.Keys.Up)) {
                 // Rocker Up
                 if (isFullscreenMode)
-                    NavigateFullscreenView(true);
+                    fullscreenToolBar_ButtonClick(fullscreenToolBar, new ToolBarButtonClickEventArgs(zoomInButton));
                 else
                     NavigateThumbnailView(true);
             }
             if ((e.KeyCode == System.Windows.Forms.Keys.Down)) {
                 // Rocker Down
                 if (isFullscreenMode)
-                    NavigateFullscreenView(false);
+                    fullscreenToolBar_ButtonClick(fullscreenToolBar, new ToolBarButtonClickEventArgs(zoomOutButton));
                 else
                     NavigateThumbnailView(false);
             }
             if ((e.KeyCode == System.Windows.Forms.Keys.Left)) {
                 // Rocker Left
-                if (isFullscreenMode)
+                if (isFullscreenMode) {
+                    isZooming = false;
+                    viewRectangle = new Rectangle(0, 0, ClientSize.Width, ClientSize.Height);
                     NavigateFullscreenView(false);
+                }
             }
             if ((e.KeyCode == System.Windows.Forms.Keys.Right)) {
                 // Rocker Right
-                if (isFullscreenMode)
-                    NavigateFullscreenView(true);                
+                if (isFullscreenMode) {
+                    isZooming = false;
+                    viewRectangle = new Rectangle(0, 0, ClientSize.Width, ClientSize.Height);
+                    NavigateFullscreenView(true);
+                }
             }
             if ((e.KeyCode == System.Windows.Forms.Keys.Enter)) {
-                // Enter
+                fullscreenToolBar_ButtonClick(fullscreenToolBar, new ToolBarButtonClickEventArgs(normalZoomButton));
             }
 
         }
@@ -653,6 +802,10 @@ namespace ImageViewerCE {
         private void fullscreenToolBar_ButtonClick(object sender, ToolBarButtonClickEventArgs e) {
             if (e.Button == thumbnailsButton) {
                 treeView.Visible = thumbnailsToolBar.Buttons[0].Pushed;
+
+                isZooming = false;
+                viewRectangle = new Rectangle(0, 0, ClientSize.Width, ClientSize.Height);
+
                 Controls.Remove(fullscreenToolBar);
                 Controls.Add(thumbnailsToolBar);
                 KillFullscreenWorkingThread();
@@ -663,9 +816,43 @@ namespace ImageViewerCE {
                 GC.Collect();
                 loadFullscreenImages(currentFullscreenIndexOnFilenameList);
             } else if (e.Button == forwardButton) {
+                isZooming = false;
+                viewRectangle = new Rectangle(0, 0, ClientSize.Width, ClientSize.Height);
+
                 NavigateFullscreenView(true);
             } else if (e.Button == backwardButton) {
+                isZooming = false;
+                viewRectangle = new Rectangle(0, 0, ClientSize.Width, ClientSize.Height);
+
                 NavigateFullscreenView(false);
+            } else if (e.Button == zoomInButton) {
+                isZooming = true;
+
+                viewRectangle.X = viewRectangle.X +
+                     ((viewRectangle.Width - (int)(viewRectangle.Width * zoomFactor)) / 2);
+                 viewRectangle.Y = viewRectangle.Y +
+                     ((viewRectangle.Height - (int)(viewRectangle.Height * zoomFactor)) / 2);
+                 viewRectangle.Width = (int)(viewRectangle.Width * zoomFactor);
+                 viewRectangle.Height = (int)(viewRectangle.Height * zoomFactor);
+
+                 DrawFullscreenView();
+                
+            } else if(e.Button == zoomOutButton) {
+                isZooming = true;
+
+                viewRectangle.X = viewRectangle.X -
+                    (((int)(viewRectangle.Width / zoomFactor)) - viewRectangle.Width) / 2;
+                viewRectangle.Y = viewRectangle.Y -
+                      (((int)(viewRectangle.Height / zoomFactor)) - viewRectangle.Height) / 2;
+                viewRectangle.Width = (int)(viewRectangle.Width / zoomFactor);
+                viewRectangle.Height = (int)(viewRectangle.Height / zoomFactor);
+
+                DrawFullscreenView();
+            } else if (e.Button == normalZoomButton) {
+                isZooming = false;
+                viewRectangle = new Rectangle(0, 0, ClientSize.Width, ClientSize.Height);
+
+                DrawFullscreenView();
             }
 
         }
@@ -806,5 +993,24 @@ namespace ImageViewerCE {
                         newY, 0);
             DrawThumbnailView();
         }
+
+
+        private Bitmap ConvertToGrayscale(Bitmap source) {
+            FastBitmap src = new FastBitmap(source);
+            Bitmap grayScaleBmp = new Bitmap(source.Width, source.Height);
+
+            for (int y = 0; y < grayScaleBmp.Height; y++) {
+                for (int x = 0; x < grayScaleBmp.Width; x++) {
+                    Color c = src.GetPixel(x, y);
+                    int luma = (int)(c.R * 0.3 + c.G * 0.59 + c.B * 0.11);
+                   
+                    grayScaleBmp.SetPixel(x, y, Color.FromArgb(luma, luma, luma));
+                }
+            }
+
+            return grayScaleBmp;
+        }
+
+
     }
 }
