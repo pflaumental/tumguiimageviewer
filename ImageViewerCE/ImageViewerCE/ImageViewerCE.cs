@@ -188,6 +188,7 @@ namespace ImageViewerCE {
                 nodes.Add(Path.GetFileName(dirs[i]));
                 nodes[i].Tag = dirs[i];
                 nodes[i].ImageIndex = GetImagesCount(dirs[i]) == 0 ? 0 : 1;
+                nodes[i].SelectedImageIndex = nodes[i].ImageIndex; 
                 DrawTreeView(dirs[i], nodes[i].Nodes);
             }     
         }
@@ -496,11 +497,12 @@ namespace ImageViewerCE {
                 int fullscreenImageOnScreenWidth = (int)(viewAreaSize.Height * sourceFullscreenRectangleRatio);
 
                 float ratio = (float)viewRectangle.Width / viewRectangle.Height;
+                
 
                 if (sourceFullscreenRectangleRatio == ratio) {
                     source = viewRectangle;
                     dest = ClientRectangle;
-                } else if (sourceFullscreenRectangleRatio < ratio) {
+                } else if (sourceFullscreenRectangleRatio < viewAreaRatio) {
                     int start = (viewAreaSize.Width - fullscreenImageOnScreenWidth) / 2;
                     int end = start + fullscreenImageOnScreenWidth;
                     
@@ -512,9 +514,10 @@ namespace ImageViewerCE {
                         source.X = (offset * sourceFullscreenRectangle.Width) / fullscreenImageOnScreenWidth;
                     }
                     source.Y = (viewRectangle.Y * sourceFullscreenRectangle.Height) / ClientSize.Height;
-                    if (viewRectangle.X < start)
+                    if (viewRectangle.X < start) {
+                        //source.Width = ((viewRectangle.X + viewRectangle.Width - start) * sourceFullscreenRectangle.Width) / fullscreenImageOnScreenWidth;
                         source.Width = sourceFullscreenRectangle.Width;
-                    else 
+                    } else
                         source.Width = (viewRectangle.Width * sourceFullscreenRectangle.Width) / fullscreenImageOnScreenWidth;
                     source.Height = (viewRectangle.Height * sourceFullscreenRectangle.Height) / ClientSize.Height;
                
@@ -544,9 +547,11 @@ namespace ImageViewerCE {
                     }
                     source.X = (viewRectangle.X * sourceFullscreenRectangle.Width) / ClientSize.Width;
                     source.Width = (viewRectangle.Width * sourceFullscreenRectangle.Width) / ClientSize.Width;
-                    if (viewRectangle.Y < start) 
+                    if (viewRectangle.Y < start) {
+                        //source.Height = (((viewRectangle.Y + viewRectangle.Height) - start) * sourceFullscreenRectangle.Height) / fullscreenImageOnScreenHeight;
+
                         source.Height = sourceFullscreenRectangle.Height;
-                    else
+                    } else
                         source.Height = (viewRectangle.Height * sourceFullscreenRectangle.Height) / fullscreenImageOnScreenHeight;
 
                     // destination rectangle             
@@ -640,18 +645,20 @@ namespace ImageViewerCE {
             lastMouseX = -1;
             lastMouseY = -1;
 
-            int w = (int)(((float)mouseWayLengthX / viewAreaSize.Width) * viewRectangle.Width);
-            int h = (int)(((float)mouseWayLengthY / viewAreaSize.Height) * viewRectangle.Height);
-            int x = viewRectangle.X + (int)(((float)mouseDragStartX / viewAreaSize.Width) * viewRectangle.Width);
-            int y = viewRectangle.Y + (int)(((float)mouseDragStartY / viewAreaSize.Height) * viewRectangle.Height);
+            if (rubberBandButton.Pushed) {
+                int w = (int)(((float)mouseWayLengthX / viewAreaSize.Width) * viewRectangle.Width);
+                int h = (int)(((float)mouseWayLengthY / viewAreaSize.Height) * viewRectangle.Height);
+                int x = viewRectangle.X + (int)(((float)mouseDragStartX / viewAreaSize.Width) * viewRectangle.Width);
+                int y = viewRectangle.Y + (int)(((float)mouseDragStartY / viewAreaSize.Height) * viewRectangle.Height);
 
-            viewRectangle.Width = w;
-            viewRectangle.Height = h;
-            viewRectangle.X = x;
-            viewRectangle.Y = y;
+                viewRectangle.Width = w;
+                viewRectangle.Height = h;
+                viewRectangle.X = x;
+                viewRectangle.Y = y;
 
-            isZooming = true;
-            DrawFullscreenView();         
+                isZooming = true;
+                DrawFullscreenView();
+            }
         }
 
         private void MouseUpInThumbnailMode(MouseEventArgs e) {
@@ -697,18 +704,23 @@ namespace ImageViewerCE {
             mouseWayLengthX += Math.Abs(e.X - lastMouseX);
             mouseWayLengthY += Math.Abs(e.Y - lastMouseY);
 
-            //int dx = e.X - lastMouseX;
-            //int dy = e.Y - lastMouseY;
+            if (!rubberBandButton.Pushed) {
+                int dx = e.X - lastMouseX;
+                int dy = e.Y - lastMouseY;
 
-            //viewRectangle.X += dx;
-            //viewRectangle.Y += dy;
+                viewRectangle.X -= (int)(dx * 0.25f);
+                viewRectangle.Y -= (int)(dy * 0.25f);
+
+                viewRectangle.X = Math.Max(viewRectangle.X, 0);
+                viewRectangle.Y = Math.Max(viewRectangle.Y, 0);
+
+                DrawFullscreenView();
+            }
 
             lastMouseX = e.X;
             lastMouseY = e.Y;
 
            
-
-            //DrawFullscreenView();
         }
 
         private void MouseMoveInThumbnailMode(MouseEventArgs e) {
