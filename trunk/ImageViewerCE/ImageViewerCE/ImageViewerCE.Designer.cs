@@ -33,7 +33,6 @@ namespace ImageViewerCE {
             this.thumbnailsButton = new System.Windows.Forms.ToolBarButton();
             this.seperator1 = new System.Windows.Forms.ToolBarButton();
             this.rotateButton = new System.Windows.Forms.ToolBarButton();
-            this.grayScaleButton = new System.Windows.Forms.ToolBarButton();
             this.seperator2 = new System.Windows.Forms.ToolBarButton();
             this.backwardButton = new System.Windows.Forms.ToolBarButton();
             this.forwardButton = new System.Windows.Forms.ToolBarButton();
@@ -41,6 +40,8 @@ namespace ImageViewerCE {
             this.zoomInButton = new System.Windows.Forms.ToolBarButton();
             this.zoomOutButton = new System.Windows.Forms.ToolBarButton();
             this.normalZoomButton = new System.Windows.Forms.ToolBarButton();
+            this.rubberBandButton = new System.Windows.Forms.ToolBarButton();
+            this.grayScaleButton = new System.Windows.Forms.ToolBarButton();
             this.settingsPanel = new System.Windows.Forms.Panel();
             this.buttonCancel = new System.Windows.Forms.Button();
             this.buttonOK = new System.Windows.Forms.Button();
@@ -73,6 +74,7 @@ namespace ImageViewerCE {
             this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource8"))));
             this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource9"))));
             this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource10"))));
+            this.menuAndBrowserIcons.Images.Add(((System.Drawing.Image)(resources.GetObject("resource11"))));
             // 
             // thumbnailsToolBar
             // 
@@ -104,6 +106,7 @@ namespace ImageViewerCE {
             this.fullscreenToolBar.Buttons.Add(this.zoomInButton);
             this.fullscreenToolBar.Buttons.Add(this.zoomOutButton);
             this.fullscreenToolBar.Buttons.Add(this.normalZoomButton);
+            this.fullscreenToolBar.Buttons.Add(this.rubberBandButton);
             this.fullscreenToolBar.ImageList = this.menuAndBrowserIcons;
             this.fullscreenToolBar.Name = "fullscreenToolBar";
             this.fullscreenToolBar.ButtonClick += new System.Windows.Forms.ToolBarButtonClickEventHandler(this.fullscreenToolBar_ButtonClick);
@@ -120,11 +123,6 @@ namespace ImageViewerCE {
             // 
             this.rotateButton.ImageIndex = 3;
             this.rotateButton.Style = System.Windows.Forms.ToolBarButtonStyle.ToggleButton;
-            // 
-            // grayScaleButton
-            // 
-            this.grayScaleButton.ImageIndex = 7;
-            this.grayScaleButton.Style = System.Windows.Forms.ToolBarButtonStyle.ToggleButton;
             // 
             // seperator2
             // 
@@ -145,14 +143,24 @@ namespace ImageViewerCE {
             // zoomInButton
             // 
             this.zoomInButton.ImageIndex = 8;
-            //
+            // 
             // zoomOutButton
-            //
+            // 
             this.zoomOutButton.ImageIndex = 9;
             // 
             // normalZoomButton
             // 
             this.normalZoomButton.ImageIndex = 10;
+            // 
+            // rubberBandButton
+            // 
+            this.rubberBandButton.ImageIndex = 11;
+            this.rubberBandButton.Style = System.Windows.Forms.ToolBarButtonStyle.ToggleButton;
+            // 
+            // grayScaleButton
+            // 
+            this.grayScaleButton.ImageIndex = 7;
+            this.grayScaleButton.Style = System.Windows.Forms.ToolBarButtonStyle.ToggleButton;
             // 
             // settingsPanel
             // 
@@ -281,6 +289,7 @@ namespace ImageViewerCE {
         private System.Windows.Forms.ToolBarButton zoomInButton;
         private System.Windows.Forms.ToolBarButton zoomOutButton;
         private System.Windows.Forms.ToolBarButton normalZoomButton;
+        private System.Windows.Forms.ToolBarButton rubberBandButton;
 
     }
 }
