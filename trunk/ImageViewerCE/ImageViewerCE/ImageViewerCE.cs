@@ -29,6 +29,8 @@ namespace ImageViewerCE {
         float viewAreaRatio;
         Rectangle viewAreaOnThumbnailsImageRectangle;
         Rectangle viewAreaOnScreenRectangle;
+        Bitmap fullscreenEndImage;
+        Rectangle fullscreenEndRectangle;
 
         Size singleThumbnailImageSize;
         Rectangle singleThumbnailImageRectangle;
@@ -58,6 +60,7 @@ namespace ImageViewerCE {
         Color foregroundColor;
         Color[] stopperColors;
         int stopperColorsCnt;
+        Font fullscreenFont;
 
         public string standardDirectory = "\\";
 
@@ -113,11 +116,15 @@ namespace ImageViewerCE {
             killThumbnailWorkingThread = false;
 
             imageFilenames = null;
+            string appDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().GetModules()[0].FullyQualifiedName);
+            fullscreenEndImage = new Bitmap(appDir + "\\fullscreenEndImage.bmp");
+            fullscreenEndRectangle = new Rectangle(0, 0, fullscreenEndImage.Width, fullscreenEndImage.Height);
 
             viewRectangle = new Rectangle(0, 0, ClientSize.Width, ClientSize.Height);
             zoomFactor = 0.8f;
             isZooming = false;
 
+            fullscreenFont = new Font(FontFamily.GenericSansSerif, 12f, FontStyle.Bold);
             backgroundColor = Color.Black;
             foregroundColor = Color.White;
             backgroundBrush = new SolidBrush(backgroundColor);
@@ -485,7 +492,14 @@ namespace ImageViewerCE {
             Bitmap currentFullscreenImage = fullscreenImages[currentFullscreenIndexOnBuffer];
 
             if (currentFullscreenImage == null) {
-                screenG.Clear(foregroundColor);
+                if (currentFullscreenIndexOnFilenameList < 0) {
+                    screenG.Clear(foregroundColor);
+                    screenG.DrawImage(fullscreenEndImage, ClientRectangle, fullscreenEndRectangle, GraphicsUnit.Pixel);
+                } else if (currentFullscreenIndexOnFilenameList >= imageFilenames.Count) {
+                    screenG.Clear(foregroundColor);
+                    screenG.DrawImage(fullscreenEndImage, ClientRectangle, fullscreenEndRectangle, GraphicsUnit.Pixel);
+                } else 
+                    screenG.Clear(backgroundColor);
                 this.Update();
                 return;
             }
@@ -661,6 +675,15 @@ namespace ImageViewerCE {
 
                 isZooming = true;
                 DrawFullscreenView();
+            } else {
+                treeView.Visible = thumbnailsToolBar.Buttons[0].Pushed;
+
+                isZooming = false;
+                viewRectangle = new Rectangle(0, 0, ClientSize.Width, ClientSize.Height);
+
+                Controls.Remove(fullscreenToolBar);
+                Controls.Add(thumbnailsToolBar);
+                KillFullscreenWorkingThread();
             }
         }
 
@@ -671,7 +694,7 @@ namespace ImageViewerCE {
             lastMouseX = -1;
             lastMouseY = -1;
 
-            if (mouseWayLength > 3)
+            if (mouseWayLength > 7)
                 return; // no klick
 
             // klick
