@@ -211,6 +211,8 @@ namespace ImageViewerCE {
         private void thumbnailsImageFromCurrentFolder() {
             KillThumbnailWorkingThread();
 
+            thumbnailsImage = null;
+
             imageFilenames = new List<string>();
             imageFilenames.AddRange(System.IO.Directory.GetFiles(currentDirectory, "*.jpg"));
             imageFilenames.AddRange(System.IO.Directory.GetFiles(currentDirectory, "*.jpeg"));
@@ -323,7 +325,8 @@ namespace ImageViewerCE {
                 singleThumbnailImage.Dispose();
 
                 if (targetOnThumbnailsImageRectangle.Y > firstVisibleY
-                        && targetOnThumbnailsImageRectangle.Y < lastVisibleY)
+                        && targetOnThumbnailsImageRectangle.Y < lastVisibleY
+                        && !isFullscreenMode)
                     this.Invoke(new EventHandler((DrawThumbnails_Event)));
 
                 targetOnThumbnailsImageRectangle.X += singleThumbnailWithSpacingSize.Width;
@@ -473,7 +476,7 @@ namespace ImageViewerCE {
                 this.Update();
                 return;
             }
-            screenG.Clear(backgroundColor);
+            //screenG.Clear(backgroundColor);
             screenG.DrawImage(thumbnailsImage, viewAreaOnScreenRectangle, viewAreaOnThumbnailsImageRectangle, GraphicsUnit.Pixel);
             this.Update();
         }
@@ -567,7 +570,7 @@ namespace ImageViewerCE {
                         dest.Y = 0;
                     dest.Width = ClientSize.Width;
                 }
-                screenG.Clear(backgroundColor);
+                //screenG.Clear(backgroundColor);
                 screenG.DrawImage(currentFullscreenImage, dest, source, GraphicsUnit.Pixel);
                 this.Update();
             }                       
@@ -725,7 +728,7 @@ namespace ImageViewerCE {
 
         private void MouseMoveInThumbnailMode(MouseEventArgs e) {
             // Do nothing if mouse wasn't pressed down before
-            if (!isMouseDown)
+            if (!isMouseDown || thumbnailsImage == null)
                 return;
 
             // Calculate mouseWayLength
@@ -858,12 +861,13 @@ namespace ImageViewerCE {
                       (((int)(viewRectangle.Height / zoomFactor)) - viewRectangle.Height) / 2;
                 viewRectangle.Width = (int)(viewRectangle.Width / zoomFactor);
                 viewRectangle.Height = (int)(viewRectangle.Height / zoomFactor);
-
+                screenG.Clear(backgroundColor);
                 DrawFullscreenView();
             } else if (e.Button == normalZoomButton) {
                 isZooming = false;
                 viewRectangle = new Rectangle(0, 0, ClientSize.Width, ClientSize.Height);
 
+                screenG.Clear(backgroundColor);
                 DrawFullscreenView();
             }
 
